@@ -17,5 +17,5 @@ setup(
     version="0.1",
     description="XTreamium Proxy",
     options=options,
-    executables=[Executable(script="xtproxy.py", base=base)],
+    executables=[Executable(script="src/xt-proxy.py", base=base)],
 )
