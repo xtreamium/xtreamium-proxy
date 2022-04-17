@@ -4,8 +4,8 @@ import pystray
 from PIL import Image
 from pystray import MenuItem
 
-from src.args import get_args
-from src.proxy import HttpServer
+from .args import get_args
+from .proxy import HttpServer
 
 
 def show_settings():
