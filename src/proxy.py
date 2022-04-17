@@ -41,6 +41,7 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
             query = {}
 
         urls = str(query["play_url"][0])
+        logger.debug(f'URLS: {urls}')
         if urls.startswith('magnet:') or urls.endswith('.torrent'):
             try:
                 pipe = Popen([
@@ -51,8 +52,11 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
                 missing_bin('peerflix')
         else:
             try:
+                logger.debug(f'Opening MPV for: {urls}')
+                logger.debug(f'MPV args: {query.get("mpv_args", [])}')
                 pipe = Popen(['mpv', urls, '--force-window'] +
                              query.get("mpv_args", []))
+                logger.debug(f'Opened MPV for: {urls}')
             except FileNotFoundError as e:
                 logger.error(f'MPV not found')
                 missing_bin('mpv')
