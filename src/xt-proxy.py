@@ -15,6 +15,10 @@ log_file = os.path.join(gettempdir(), 'xtreamium-proxy.log')
 logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.DEBUG)
 logging.debug('XT Proxy Starting')
 
+stderrLogger = logging.StreamHandler()
+stderrLogger.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+logging.getLogger().addHandler(stderrLogger)
+
 
 def show_settings():
     print("Hello Sailor")
