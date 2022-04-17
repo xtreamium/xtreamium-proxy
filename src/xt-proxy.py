@@ -4,8 +4,8 @@ import pystray
 from PIL import Image
 from pystray import MenuItem
 
-from .args import get_args
-from .proxy import HttpServer
+from src.args import get_args
+from src.proxy import HttpServer
 
 
 def show_settings():
@@ -30,5 +30,11 @@ if __name__ == '__main__':
         MenuItem('Quit', on_quit)
     )
 
-    icon = pystray.Icon("XTreamium Proxy", image, "XTreamium Proxy", menu, HAS_MENU=True)
+    icon = pystray.Icon(
+        name="XTreamium Proxy",
+        icon=image,
+        title=server.get_banner(),
+        menu=menu,
+        HAS_MENU=True)
+
     icon.run()

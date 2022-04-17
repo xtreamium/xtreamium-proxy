@@ -62,6 +62,7 @@ class HttpServer(threading.Thread):
         self._host = host
         self._port = port
         self._httpd = ThreadingHTTPServer((self._host, self._port), CORSRequestHandler)
+        self._banner = "xtreamium-proxy"
 
     def stop(self):
         self._httpd.shutdown()
@@ -71,3 +72,6 @@ class HttpServer(threading.Thread):
         print("Listening on {}:{}".format(self._host, self._port))
 
         self._httpd.serve_forever()
+
+    def get_banner(self):
+        return f'Xtreamium Proxy @ http://{self._host}:{self._port}'
