@@ -1,4 +1,5 @@
 import os
+from tempfile import gettempdir
 
 import pystray
 from PIL import Image
@@ -6,6 +7,13 @@ from pystray import MenuItem
 
 from src.args import get_args
 from src.proxy import HttpServer
+
+import logging
+
+log_file = os.path.join(gettempdir(), 'xtreamium-proxy.log')
+
+logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.DEBUG)
+logging.debug('XT Proxy Starting')
 
 
 def show_settings():
