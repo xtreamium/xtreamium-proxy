@@ -13,8 +13,7 @@ from src.proxy import HttpServer
 import logging
 
 SETTINGS_PATH = user_config_dir('xtreamium')
-settings = sg.UserSettings(
-    path=SETTINGS_PATH)
+settings = sg.UserSettings(path=SETTINGS_PATH)
 
 log_file = os.path.join(gettempdir(), 'xtreamium-proxy.log')
 
