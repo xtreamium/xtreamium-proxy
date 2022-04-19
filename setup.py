@@ -5,6 +5,13 @@ options = {
     "build_exe": {
         "includes": ["xt-proxy", "proxy"],
         "path": sys.path + ["src"],
+    },
+    "bdist_msi": {
+        "includes": ["xt-proxy", "proxy"],
+        "path": sys.path + ["src"],
+        'upgrade_code': '{66620F3A-DC3A-11E2-B341-002219E9B01E}',
+        'add_to_path': False,
+        'initial_target_dir': '[ProgramFilesFolder]\\XTreamiumProxy\\',
     }
 }
 
