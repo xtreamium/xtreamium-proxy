@@ -7,7 +7,7 @@ options = {
         "path": sys.path + ["src"],
     },
     "bdist_msi": {
-        'upgrade_code': '{66620F3A-DC3A-11E2-B341-002219E9B01E}',
+        'upgrade_code': '{886dbe34-e78c-436e-9d75-64126d434ae4}',
         'add_to_path': False,
         'initial_target_dir': '[ProgramFilesFolder]\\XTreamiumProxy\\',
     }
