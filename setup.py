@@ -3,7 +3,7 @@ from cx_Freeze import setup, Executable
 
 options = {
     "build_exe": {
-        "includes": ["xt-proxy", "proxy"],
+        "includes": ["xt-proxy", "proxy", "screeninfo"],
         "path": sys.path + ["src"],
     },
     "bdist_msi": {
