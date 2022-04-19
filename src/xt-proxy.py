@@ -8,7 +8,6 @@ from PIL import Image
 from appdirs import user_config_dir
 from pystray import MenuItem
 
-from src.args import get_args
 from src.proxy import HttpServer
 
 import logging
