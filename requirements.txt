@@ -1,5 +1,5 @@
-PySimpleGUI==4.45.0
-pystray=0.19.3
-Pillow~=9.1.0
-setuptools~=60.10.0
+PySimpleGUI
+pystray
+Pillow
 cx_freeze
+screeninfo

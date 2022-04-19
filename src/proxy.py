@@ -17,6 +17,12 @@ def missing_bin(bin):
 
 class CORSRequestHandler(SimpleHTTPRequestHandler):
 
+    def __init__(self, mpv_args):
+        self._mpv_args = mpv_args.split('\n')
+
+    def __call__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', '*')
@@ -53,9 +59,8 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         else:
             try:
                 logger.debug(f'Opening MPV for: {urls}')
-                logger.debug(f'MPV args: {query.get("mpv_args", [])}')
                 pipe = Popen(['mpv', urls, '--force-window'] +
-                             query.get("mpv_args", []))
+                             self._mpv_args)
                 logger.debug(f'Opened MPV for: {urls}')
             except FileNotFoundError as e:
                 logger.error(f'MPV not found')
@@ -70,11 +75,15 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
 
 class HttpServer(threading.Thread):
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, mpv_args):
         super().__init__()
         self._host = host
         self._port = port
-        self._httpd = ThreadingHTTPServer((self._host, self._port), CORSRequestHandler)
+        self._mpv_args = mpv_args
+
+        handler = CORSRequestHandler(mpv_args)
+
+        self._httpd = ThreadingHTTPServer((self._host, self._port), handler)
         self._banner = "xtreamium-proxy"
 
     def stop(self):

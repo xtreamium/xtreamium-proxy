@@ -1,0 +1,5 @@
+{
+  "mpv-args": "--keep-open=yes\n--geometry=1024x768-0-0\n--ontop\n--screen=2\n--ytdl-format=bestvideo[ext=mp4][height<=?720]+bestaudio[ext=m4a]\n--border=no",
+  "host": "localhost",
+  "port": 9531
+}

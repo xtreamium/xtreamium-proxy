@@ -3,7 +3,7 @@ from cx_Freeze import setup, Executable
 
 options = {
     "build_exe": {
-        "includes": ["xt-proxy", "proxy"],
+        "includes": ["xt-proxy.py", "proxy"],
         "path": sys.path + ["src"],
     }
 }
@@ -17,5 +17,12 @@ setup(
     version="0.1",
     description="XTreamium Proxy",
     options=options,
-    executables=[Executable(script="src/xt-proxy.py", base=base)],
+    executables=[
+        Executable(
+            script="src/xt-proxy.py",
+            base=base,
+            shortcutName="XTreamium Proxy",
+            shortcutDir="ProgramMenuFolder",
+        )
+    ],
 )
