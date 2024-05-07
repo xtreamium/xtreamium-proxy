@@ -1,6 +1,0 @@
-PySimpleGUI
-pystray
-Pillow
-cx_freeze
-screeninfo
-appdirs
