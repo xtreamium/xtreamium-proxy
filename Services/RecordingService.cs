@@ -2,8 +2,8 @@
 
 namespace Xtreamium.Proxy.Services;
 
-public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfiguration config) {
-  public async Task<bool> PlayFromUrl(string url) {
+public class RecordingService(ILogger<RecordingService> logger, IConfiguration config) {
+  public async Task<string> RecordShow(string url, DateTimeOffset startTime, long duration) {
     logger.LogDebug("Playing {Url}", url);
     await Task.Run(() => {
       var process = new Process {
@@ -22,6 +22,6 @@ public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfigurati
       process.Start();
     });
 
-    return true;
+    return "Playback started.";
   }
 }

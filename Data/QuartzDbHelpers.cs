@@ -9,13 +9,14 @@ public static class QuartzDbHelpers {
     "xtreamium",
     "config.db");
 
-  public static async Task<bool> ScaffoldDb() {
+  public static async Task<string> ScaffoldDb() {
     var dbPath = _getDbPath();
+    var connectionString = $"Data Source={dbPath}";
     if (File.Exists(dbPath)) {
-      return true;
+      return connectionString;
     }
 
-    await using var connection = new SqliteConnection($"Data Source={dbPath}");
+    await using var connection = new SqliteConnection(connectionString);
     await connection.OpenAsync();
 
     await using Stream? stream =
@@ -32,6 +33,6 @@ public static class QuartzDbHelpers {
 
     var cmd = new SqliteCommand(sql, connection);
     await cmd.ExecuteNonQueryAsync();
-    return true;
+    return connectionString;
   }
 }
