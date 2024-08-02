@@ -28,7 +28,7 @@ builder.Host
 builder.Services.AddCors(options => {
   options.AddPolicy(name: "WebFrontend", policy => {
     policy.WithOrigins(
-        "https://streams.dev.fergl.ie:3000/",
+        "https://streams.dev.fergl.ie:3000",
         "https://streams.fergl.ie",
         "https://streams.ferg.al")
       .AllowAnyHeader()

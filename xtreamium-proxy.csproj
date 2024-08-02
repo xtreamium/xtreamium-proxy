@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PublishSingleFile>true</PublishSingleFile>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,16 +10,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.4" />
-    <PackageReference Include="Quartz.AspNetCore" Version="3.8.1" />
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.8.1" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.4"/>
+    <PackageReference Include="Quartz.AspNetCore" Version="3.8.1"/>
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.8.1"/>
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1"/>
+    <PackageReference Include="System.Data.SQLite" Version="1.0.118"/>
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Data\quartz.sql" />
-    <EmbeddedResource Include="Data\quartz.sql" />
+    <None Remove="Data\quartz.sql"/>
+    <EmbeddedResource Include="Data\quartz.sql"/>
   </ItemGroup>
 
 </Project>
