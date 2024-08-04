@@ -42,6 +42,7 @@ public static class QuartzDbHelpers {
     Console.WriteLine("Creating tables");
     var cmd = new SqliteCommand(sql, connection);
     await cmd.ExecuteNonQueryAsync();
+    Console.WriteLine($"Connection string is: {connectionString}");
     return connectionString;
   }
 }
