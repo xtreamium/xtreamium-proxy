@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Quartz;
-using Quartz.Simpl;
-using Serilog;
+﻿using Serilog;
 using Xtreamium.Proxy.Data;
 using Xtreamium.Proxy.Endpoints;
 using Xtreamium.Proxy.Hubs;
+using Xtreamium.Proxy.Models;
 using Xtreamium.Proxy.Services;
+using Xtreamium.Proxy.Services.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 var jobsDb = await QuartzDbHelpers.ScaffoldDb();
@@ -19,15 +18,7 @@ builder.Host
   .UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration))
   .ConfigureServices(((_, services) => {
-    services.AddQuartz(q => {
-      q.UsePersistentStore(options => {
-        options.UseProperties = true;
-        options.UseSerializer<BinaryObjectSerializer>();
-        options.UseSQLite(jobsDb);
-      });
-    }).AddQuartzHostedService(options => {
-      options.WaitForJobsToComplete = true;
-    });
+    services.AddJobs(jobsDb);
   }));
 builder.Services.AddCors(options => {
   options.AddPolicy(name: "WebFrontend", policy => {
@@ -42,6 +33,9 @@ builder.Services.AddCors(options => {
 
 builder.Services.AddTransient<VideoPlayerService>();
 builder.Services.AddSingleton<RecordingService>();
+builder.Services.AddRecordVmValidator();
+
+
 var app = builder.Build();
 
 app.UseCors(options =>

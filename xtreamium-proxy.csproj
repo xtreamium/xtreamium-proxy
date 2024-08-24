@@ -10,16 +10,131 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.4"/>
-    <PackageReference Include="Quartz.AspNetCore" Version="3.8.1"/>
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.8.1"/>
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1"/>
+    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="FluentValidation" Version="11.9.2" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <PackageReference Include="Quartz.AspNetCore" Version="3.13.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.13.0" />
+    <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.13.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.118"/>
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="Data\quartz.sql"/>
     <EmbeddedResource Include="Data\quartz.sql"/>
+    <EmbeddedResource Remove="Logs\**" />
+    <None Remove="Logs\**" />
+    <EmbeddedResource Remove="publish\**" />
+    <None Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Logs\**" />
+    <Compile Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Logs\**" />
+    <Content Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\publish\win\web.config" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\web.config" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\web.config" />
+    <_ContentIncludedByDefault Remove="publish\win\web.config" />
+    <_ContentIncludedByDefault Remove="publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\linux\publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\linux\publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\linux\publish\win\publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\linux\publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\linux\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\publish\win\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\publish\win\appsettings.json" />
   </ItemGroup>
 
 </Project>
