@@ -7,8 +7,8 @@ using Xtreamium.Proxy.Services;
 using Xtreamium.Proxy.Services.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
-var jobsDb = await QuartzDbHelpers.ScaffoldDb();
-if (string.IsNullOrEmpty(jobsDb)) {
+var connectionString = await DbHelper.ScaffoldDb();
+if (string.IsNullOrEmpty(connectionString)) {
   throw new InvalidOperationException("Failed to scaffold Quartz database.");
 }
 
@@ -18,7 +18,7 @@ builder.Host
   .UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration))
   .ConfigureServices(((_, services) => {
-    services.AddJobs(jobsDb);
+    services.AddJobs(connectionString);
   }));
 builder.Services.AddCors(options => {
   options.AddPolicy(name: "WebFrontend", policy => {

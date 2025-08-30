@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Simpl;
 
 namespace Xtreamium.Proxy.Services.Jobs;
 
@@ -12,7 +11,7 @@ public static class JobsStartup {
 
       q.UsePersistentStore(options => {
         options.UseSystemTextJsonSerializer();
-        options.UseSQLite(jobsDb);
+        options.UseMicrosoftSQLite(jobsDb);
       });
     }).AddQuartzHostedService(options => {
       options.WaitForJobsToComplete = true;

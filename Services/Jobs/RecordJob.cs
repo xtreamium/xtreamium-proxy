@@ -1,5 +1,10 @@
 using System.Text.Json;
+using Dapper;
+using Dapper.Contrib.Extensions;
+using Microsoft.AspNetCore.Identity;
 using Quartz;
+using Xtreamium.Proxy.Data;
+using Xtreamium.Proxy.Data.Models;
 using Xtreamium.Proxy.Models;
 
 namespace Xtreamium.Proxy.Services.Jobs;
@@ -14,6 +19,7 @@ public class RecordJob : IJob {
   }
 
   public async Task Execute(IJobExecutionContext context) {
+    var jobId = context.JobDetail.Key.Name;
     if (context.Trigger.JobDataMap["data"] is not string) {
       _logger.LogError("Invalid job data {JobData}", context.Trigger.JobDataMap);
       return;
@@ -34,10 +40,26 @@ public class RecordJob : IJob {
         throw new InvalidOperationException("Invalid recording data");
       }
 
-      await _recorder.RecordShow(
+      var outputFile = await _recorder.RecordShow(
         data.Url.DecodeUrl(),
         data.StartTime,
         data.Duration);
+
+      if (!string.IsNullOrEmpty(outputFile)) {
+        using var db = await DbHelper.GetConnection();
+
+        const string sql = "SELECT * FROM xt_Recordings WHERE JobId = @JobId";
+        var recording = (await db.QueryAsync<Recording>(sql, new {JobId = jobId}))
+          .FirstOrDefault();
+        if (recording is null) {
+          _logger.LogError("Failed to find recording with JobId {JobId}", jobId);
+          return;
+        }
+
+        recording.IsRecorded = true;
+        recording.FilePath = outputFile;
+        await db.UpdateAsync<Recording>(recording);
+      }
     } catch (JsonException jse) {
       _logger.LogError(jse, "Failed to deserialize recording data");
     }

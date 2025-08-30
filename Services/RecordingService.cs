@@ -4,15 +4,22 @@ using FFMpegCore.Enums;
 namespace Xtreamium.Proxy.Services;
 
 public class RecordingService(ILogger<RecordingService> logger, IConfiguration config) {
-  public async Task<bool> RecordShow(
+  public async Task<string> RecordShow(
     string url, DateTimeOffset startTime, int duration) {
     logger.LogDebug("Recording {Url} scheduled for {StartTime}", url, startTime);
-    File.Delete("/tmp/arse.mp4");
+
+    var outputPath =
+      config["Recordings:Path"] ??
+      Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "xtreamium");
+
+    var outputFile = Path.Combine(outputPath, $"{Guid.NewGuid()}.mp4");
 
     try {
       var task = FFMpegArguments
         .FromUrlInput(new Uri(url))
-        .OutputToFile("/tmp/arse.mp4", true, options => options
+        .OutputToFile(outputFile, true, options => options
           .CopyChannel()
           .WithAudioCodec(AudioCodec.Aac)
           .WithVideoCodec(VideoCodec.LibX264)
@@ -27,15 +34,14 @@ public class RecordingService(ILogger<RecordingService> logger, IConfiguration c
           cancel();
         });
 
-      var result = await task.ProcessAsynchronously();
-      return result;
+      await task.ProcessAsynchronously();
     } catch (OperationCanceledException) {
       logger.LogDebug("Finished recording {Url}", url);
-      return true;
+      return outputFile;
     } catch (Exception e) {
-      logger.LogError("Error recording {Url}: {Message}", url, e.Message);
+      logger.LogError(e, "Error recording {Url}", url);
     }
 
-    return false;
+    return string.Empty;
   }
 }
