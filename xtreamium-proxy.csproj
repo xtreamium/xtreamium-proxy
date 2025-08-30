@@ -142,4 +142,8 @@
     <_ContentIncludedByDefault Remove="publish\win\publish\win\publish\win\publish\win\appsettings.json"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <EditorConfigFiles Remove=".editorconfig" />
+  </ItemGroup>
+
 </Project>
