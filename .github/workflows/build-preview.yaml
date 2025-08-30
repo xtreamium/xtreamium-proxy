@@ -20,11 +20,8 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
-
     - name: Publish Windows
-      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
+      run: dotnet publish xtreamium-proxy.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
 
     - name: Create Windows Service Installer
       run: |
@@ -135,11 +132,8 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
-
     - name: Publish Linux
-      run: dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+      run: dotnet publish xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
     - name: Create Linux Installer
       run: |
