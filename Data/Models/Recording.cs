@@ -2,7 +2,7 @@
 
 namespace Xtreamium.Proxy.Data.Models;
 
-[Table("xt_Recordings")]
+[Table("recordings")]
 public record Recording {
   [Key]
   public int Id { get; set; }

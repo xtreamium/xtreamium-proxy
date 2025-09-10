@@ -47,22 +47,20 @@ public static class DbHelper {
     using var connection = await GetConnection();
 
     await _runEmbeddedSql(connection, "quartz");
-    await _runEmbeddedSql(connection, "xtreamium");
     Console.WriteLine($"Connection string is: {ConnectionString}");
     return ConnectionString;
   }
 
-  private static async Task _runEmbeddedSql(IDbConnection connection,
-    string resourceName) {
-    await using Stream? stream =
-      Assembly.GetExecutingAssembly()
-        .GetManifestResourceStream($"Xtreamium.Proxy.Data.{resourceName}.sql");
+  private static async Task _runEmbeddedSql(IDbConnection connection, string resourceName) {
+    await using var stream = Assembly
+      .GetExecutingAssembly()
+      .GetManifestResourceStream($"Xtreamium.Proxy.Data.{resourceName}.sql");
     if (stream is null) {
       throw new InvalidOperationException("No SQL found in resource.");
     }
 
-    using StreamReader reader = new StreamReader(stream);
-    string sql = await reader.ReadToEndAsync();
+    using var reader = new StreamReader(stream);
+    var sql = await reader.ReadToEndAsync();
     if (string.IsNullOrWhiteSpace(sql)) {
       throw new InvalidOperationException("No SQL found in resource.");
     }

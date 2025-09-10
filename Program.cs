@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿using System.Reflection;
+using FluentMigrator.Runner;
+using Serilog;
 using Xtreamium.Proxy.Data;
 using Xtreamium.Proxy.Endpoints;
 using Xtreamium.Proxy.Hubs;
@@ -34,9 +36,13 @@ builder.Services.AddCors(options => {
 builder.Services.AddTransient<VideoPlayerService>();
 builder.Services.AddSingleton<RecordingService>();
 builder.Services.AddRecordVmValidator();
+builder.Services.AddSettingsVmValidator();
 
+builder.Services.AddMigrations();
 
 var app = builder.Build();
+
+app.MigrateDatabase();
 
 app.UseCors(options =>
   options.WithOrigins(
@@ -53,5 +59,6 @@ app.MapGet("/ping", () => new {Ping = "Pong"});
 
 app.RegisterPlayerEndpoints();
 app.RegisterRecordEndpoints();
+app.RegisterSettingsEndpoints();
 
 app.Run();

@@ -1,16 +1,22 @@
 ﻿using System.Diagnostics;
+using Xtreamium.Proxy.Data.Services;
 
 namespace Xtreamium.Proxy.Services;
 
 public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfiguration config) {
   public async Task<bool> PlayFromUrl(string url) {
     logger.LogDebug("Playing {Url}", url);
-    await Task.Run(() => {
+    await Task.Run(async () => {
+      var settings = await SettingsHelper.GetSettings();
+
+      var arguments = settings.MpvArguments.Contains("{{URL}}")
+        ? settings.MpvArguments.Replace("{{URL}}", url)
+        : $"{settings.MpvArguments} {url}";
+
       var process = new Process {
         StartInfo = new ProcessStartInfo {
           FileName = config["Tools:VideoPlayer:Executable"],
-          Arguments = config["Tools:VideoPlayer:Arguments"]?
-            .Replace("{{URL}}", url),
+          Arguments = arguments,
           CreateNoWindow = true,
           UseShellExecute = false
         }

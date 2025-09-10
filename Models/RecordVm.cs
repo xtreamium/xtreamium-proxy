@@ -18,7 +18,7 @@ internal sealed class RecordVmValidator : AbstractValidator<RecordVm> {
   }
 }
 
-internal static class RegisterRecordVmValidator {
+static internal class RegisterRecordVmValidator {
   public static void AddRecordVmValidator(this IServiceCollection services) {
     services.AddScoped<IValidator<RecordVm>, RecordVmValidator>();
   }
