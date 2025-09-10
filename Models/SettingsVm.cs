@@ -3,8 +3,8 @@ using FluentValidation;
 namespace Xtreamium.Proxy.Models;
 
 public class SettingsVm {
-  public string MpvArguments { get; set; }
-  public string RecordingsPath { get; set; }
+  public required string MpvArguments { get; set; }
+  public required string RecordingsPath { get; set; }
   public int Port { get; set; }
 }
 

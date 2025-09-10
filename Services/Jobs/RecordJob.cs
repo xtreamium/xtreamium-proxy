@@ -1,20 +1,21 @@
 using System.Text.Json;
-using Dapper;
-using Dapper.Contrib.Extensions;
-using Microsoft.AspNetCore.Identity;
 using Quartz;
-using Xtreamium.Proxy.Data;
-using Xtreamium.Proxy.Data.Models;
+using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
 
 namespace Xtreamium.Proxy.Services.Jobs;
 
 public class RecordJob : IJob {
-  private readonly RecordingService _recorder;
+  private readonly IRecordingService _recorder;
+  private readonly IRecordingRepository _recordingRepository;
   private readonly ILogger<RecordJob> _logger;
 
-  public RecordJob(RecordingService recorder, ILogger<RecordJob> logger) {
+  public RecordJob(
+    IRecordingService recorder,
+    IRecordingRepository recordingRepository,
+    ILogger<RecordJob> logger) {
     _recorder = recorder;
+    _recordingRepository = recordingRepository;
     _logger = logger;
   }
 
@@ -46,11 +47,7 @@ public class RecordJob : IJob {
         data.Duration);
 
       if (!string.IsNullOrEmpty(outputFile)) {
-        using var db = await DbHelper.GetConnection();
-
-        const string sql = "SELECT * FROM xt_Recordings WHERE JobId = @JobId";
-        var recording = (await db.QueryAsync<Recording>(sql, new {JobId = jobId}))
-          .FirstOrDefault();
+        var recording = await _recordingRepository.GetByJobIdAsync(jobId);
         if (recording is null) {
           _logger.LogError("Failed to find recording with JobId {JobId}", jobId);
           return;
@@ -58,7 +55,7 @@ public class RecordJob : IJob {
 
         recording.IsRecorded = true;
         recording.FilePath = outputFile;
-        await db.UpdateAsync<Recording>(recording);
+        await _recordingRepository.UpdateAsync(recording);
       }
     } catch (JsonException jse) {
       _logger.LogError(jse, "Failed to deserialize recording data");

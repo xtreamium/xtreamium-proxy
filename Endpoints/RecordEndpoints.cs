@@ -1,11 +1,10 @@
 using System.Text.Json;
 using System.Web;
-using Dapper.Contrib.Extensions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Quartz;
-using Xtreamium.Proxy.Data;
 using Xtreamium.Proxy.Data.Models;
+using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
 using Xtreamium.Proxy.Services.Jobs;
 
@@ -15,15 +14,15 @@ public static class RecordEndpoints {
   public static void RegisterRecordEndpoints(this IEndpointRouteBuilder app) {
     var endpoints = app.MapGroup("/recordings");
 
-    endpoints.MapGet("", async () => {
-      using var db = await DbHelper.GetConnection();
-      var recordings = db.GetAll<Recording>().ToList();
+    endpoints.MapGet("", async ([FromServices] IRecordingRepository recordingRepository) => {
+      var recordings = await recordingRepository.GetAllAsync();
       return Results.Ok(recordings);
     });
     endpoints.MapPost("",
       async (
         CancellationToken ct,
         [FromServices] ISchedulerFactory schedulerFactory,
+        [FromServices] IRecordingRepository recordingRepository,
         [FromServices] IValidator<RecordVm> validator,
         [FromServices] ILoggerFactory loggerFactory,
         [FromBody] RecordVm request) => {
@@ -34,7 +33,6 @@ public static class RecordEndpoints {
         }
 
         var jobId = $"RecordJob-{Guid.NewGuid()}";
-        using var db = await DbHelper.GetConnection();
         try {
           var scheduler = await schedulerFactory.GetScheduler(ct);
           var jobKey = new JobKey(jobId);
@@ -58,7 +56,7 @@ public static class RecordEndpoints {
             IsRecorded = false,
             JobId = jobId
           };
-          await db.InsertAsync(recording);
+          await recordingRepository.InsertAsync(recording);
         } catch (Exception e) {
           logger.LogError(e, "Error scheduling recording");
           return Results.StatusCode(StatusCodes.Status500InternalServerError);

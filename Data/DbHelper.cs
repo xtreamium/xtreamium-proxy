@@ -2,10 +2,13 @@
 using Microsoft.Data.Sqlite;
 using System.Reflection;
 using Dapper;
-using Xtreamium.Proxy.Data.TypeHandlers;
 
 namespace Xtreamium.Proxy.Data;
 
+/// <summary>
+/// Legacy database helper - use IDbConnectionFactory and repository pattern instead
+/// </summary>
+[Obsolete("Use IDbConnectionFactory and repository pattern instead")]
 public static class DbHelper {
   public static string ConnectionString {
     get {
@@ -28,9 +31,6 @@ public static class DbHelper {
     "xtreamium");
 
   public static async Task<string> ScaffoldDb() {
-    SqlMapper.AddTypeHandler<Guid>(new GuidTypeHandler());
-    SqlMapper.AddTypeHandler<DateTimeOffset>(new DateTimeOffsetTypeHandler());
-
     Console.WriteLine("Scaffolding database.");
     var dbPath = _getDbPath();
     Console.WriteLine($"Path is {dbPath}.");

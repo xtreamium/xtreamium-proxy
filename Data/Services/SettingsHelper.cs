@@ -1,36 +1,44 @@
-using Dapper.Contrib.Extensions;
 using Xtreamium.Proxy.Data.Models;
+using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
 
 namespace Xtreamium.Proxy.Data.Services;
 
+/// <summary>
+/// Helper service for settings operations - will be replaced by direct repository usage
+/// </summary>
+[Obsolete("Use ISettingsRepository directly instead")]
 public static class SettingsHelper {
+  private static ISettingsRepository? _repository;
+
+  public static void Initialize(ISettingsRepository repository) {
+    _repository = repository;
+  }
+
   public static async Task<SettingsVm> GetSettings() {
-    using var db = await DbHelper.GetConnection();
-    var settings = db.GetAll<Setting>().FirstOrDefault();
-    var vm = new SettingsVm {
+    if (_repository == null) {
+      throw new InvalidOperationException("SettingsHelper not initialized. Use ISettingsRepository directly instead.");
+    }
+
+    var settings = await _repository.GetSettingsAsync();
+    return new SettingsVm {
       MpvArguments = settings.MpvArguments,
       RecordingsPath = settings.RecordingsPath,
       Port = settings.Port
     };
-    return vm;
   }
 
   public static async Task WriteSettings(SettingsVm request) {
-    using var db = await DbHelper.GetConnection();
-    var settings = db.GetAll<Setting>().FirstOrDefault();
-    if (settings == null) {
-      settings = new Setting {
-        MpvArguments = request.MpvArguments,
-        RecordingsPath = request.RecordingsPath,
-        Port = request.Port
-      };
-      await db.InsertAsync(settings);
-    } else {
-      settings.MpvArguments = request.MpvArguments;
-      settings.RecordingsPath = request.RecordingsPath;
-      settings.Port = request.Port;
-      await db.UpdateAsync(settings);
+    if (_repository == null) {
+      throw new InvalidOperationException("SettingsHelper not initialized. Use ISettingsRepository directly instead.");
     }
+
+    var settings = new Setting {
+      MpvArguments = request.MpvArguments,
+      RecordingsPath = request.RecordingsPath,
+      Port = request.Port
+    };
+
+    await _repository.UpdateOrCreateSettingsAsync(settings);
   }
 }

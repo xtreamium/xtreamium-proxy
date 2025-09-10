@@ -1,32 +1,45 @@
 ﻿using System.Diagnostics;
-using Xtreamium.Proxy.Data.Services;
+using System.Security;
+using Microsoft.Extensions.Options;
+using Xtreamium.Proxy.Configuration;
+using Xtreamium.Proxy.Data.Repositories;
 
 namespace Xtreamium.Proxy.Services;
 
-public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfiguration config) {
+public class VideoPlayerService : IVideoPlayerService {
+  private readonly ILogger<VideoPlayerService> _logger;
+  private readonly AppConfiguration _config;
+  private readonly ISettingsRepository _settingsRepository;
+
+  public VideoPlayerService(
+    ILogger<VideoPlayerService> logger,
+    IOptions<AppConfiguration> config,
+    ISettingsRepository settingsRepository) {
+    _logger = logger;
+    _config = config.Value;
+    _settingsRepository = settingsRepository;
+  }
   public async Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
     if (string.IsNullOrWhiteSpace(url)) {
-      logger.LogWarning("PlayFromUrl called with empty URL");
+      _logger.LogWarning("PlayFromUrl called with empty URL");
       return false;
     }
 
     try {
-      var settings = await SettingsHelper.GetSettings();
-      var exe = config["Tools:VideoPlayer:Executable"];
+      var settings = await _settingsRepository.GetSettingsAsync();
+      var exe = _config.VideoPlayer.Executable;
 
       if (string.IsNullOrWhiteSpace(exe)) {
-        logger.LogError("Video player executable not configured at Tools:VideoPlayer:Executable");
+        _logger.LogError("Video player executable not configured");
         return false;
       }
 
       if (!File.Exists(exe)) {
-        logger.LogWarning("Configured video player executable not found: {Path}", exe);
+        _logger.LogWarning("Configured video player executable not found: {Path}", exe);
         // Still attempt to start in case it's on PATH; remove check if you want that behavior.
       }
 
-      var args = settings.MpvArguments != null && settings.MpvArguments.Contains("{{URL}}")
-        ? settings.MpvArguments.Replace("{{URL}}", QuoteArgument(url))
-        : $"{settings.MpvArguments ?? string.Empty} {QuoteArgument(url)}";
+      var args = SanitizeMpvArguments(settings.MpvArguments, url);
 
       var psi = new ProcessStartInfo {
         FileName = exe,
@@ -35,11 +48,11 @@ public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfigurati
         UseShellExecute = false
       };
 
-      logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
+      _logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
 
       using var process = Process.Start(psi);
       if (process == null) {
-        logger.LogError("Failed to start video player process");
+        _logger.LogError("Failed to start video player process");
         return false;
       }
 
@@ -48,23 +61,55 @@ public class VideoPlayerService(ILogger<VideoPlayerService> logger, IConfigurati
 
       return true;
     } catch (OperationCanceledException) {
-      logger.LogInformation("PlayFromUrl canceled");
+      _logger.LogInformation("PlayFromUrl canceled");
       return false;
     } catch (Exception ex) {
-      logger.LogError(ex, "Error while starting video player");
+      _logger.LogError(ex, "Error while starting video player");
       return false;
     }
   }
 
+  /// <summary>
+  /// Safely quote and sanitize command arguments
+  /// </summary>
   private static string QuoteArgument(string arg) {
     if (string.IsNullOrEmpty(arg))
       return "\"\"";
 
-    // Simple quoting for spaces and preserving existing quotes.
-    if (arg.Contains(' ') || arg.Contains('"')) {
-      return "\"" + arg.Replace("\"", "\\\"") + "\"";
+    // Remove potentially dangerous characters
+    var sanitized = arg.Replace("\"", "\\\"")
+                      .Replace(";", "")
+                      .Replace("&", "")
+                      .Replace("|", "")
+                      .Replace("`", "")
+                      .Replace("$", "")
+                      .Replace("(", "")
+                      .Replace(")", "");
+
+    // Always quote to prevent injection
+    return $"\"{sanitized}\"";
+  }
+
+  /// <summary>
+  /// Validate and sanitize MPV arguments template
+  /// </summary>
+  private static string SanitizeMpvArguments(string argumentTemplate, string url) {
+    if (string.IsNullOrWhiteSpace(argumentTemplate)) {
+      return QuoteArgument(url);
     }
 
-    return arg;
+    // Check for potentially dangerous argument patterns
+    var dangerous = new[] { "--input-terminal", "--terminal", "--script", "--load-scripts" };
+    if (dangerous.Any(d => argumentTemplate.Contains(d, StringComparison.OrdinalIgnoreCase))) {
+      throw new SecurityException("Potentially dangerous MPV arguments detected");
+    }
+
+    // Replace URL placeholder safely
+    if (argumentTemplate.Contains("{{URL}}")) {
+      return argumentTemplate.Replace("{{URL}}", QuoteArgument(url));
+    }
+
+    // If no placeholder, append URL safely
+    return $"{argumentTemplate} {QuoteArgument(url)}";
   }
 }
