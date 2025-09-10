@@ -4,26 +4,28 @@ namespace Xtreamium.Proxy.Data.Repositories;
 
 public interface ISettingsRepository : IRepository<Setting> {
   Task<Setting> GetSettingsAsync();
+
   Task<Setting> UpdateOrCreateSettingsAsync(Setting settings);
 }
 
 public class SettingsRepository : Repository<Setting>, ISettingsRepository {
-  public SettingsRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory) {
-  }
+  public SettingsRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory) { }
 
   public async Task<Setting> GetSettingsAsync() {
     var settings = (await GetAllAsync()).FirstOrDefault();
 
     // Return default settings if none exist
-    if (settings == null) {
-      settings = new Setting {
-        MpvArguments = "--keep-open=yes --geometry=1024x768-0-0 --ontop --screen=2 --border=no {{URL}}",
-        RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
-        Port = 5000
-      };
-
-      await InsertAsync(settings);
+    if (settings != null) {
+      return settings;
     }
+
+    settings = new Setting {
+      MpvArguments = "--keep-open=yes --geometry=1024x768-0-0 --ontop --screen=2 --border=no {{URL}}",
+      RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
+      Port = 5000
+    };
+
+    await InsertAsync(settings);
 
     return settings;
   }
