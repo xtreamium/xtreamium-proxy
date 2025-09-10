@@ -8,7 +8,7 @@ public static class MigrationManager {
     services.AddLogging(c => c.AddFluentMigratorConsole())
       .AddFluentMigratorCore()
       .ConfigureRunner(c => c.AddSQLite()
-        .WithGlobalConnectionString(DbHelper.ConnectionString)
+        .WithGlobalConnectionString(sp => sp.GetRequiredService<IDbConnectionFactory>().ConnectionString)
         .ScanIn(Assembly.GetExecutingAssembly()).For.Migrations());
 
     return services;

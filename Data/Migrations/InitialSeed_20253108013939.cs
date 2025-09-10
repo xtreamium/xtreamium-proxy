@@ -6,7 +6,7 @@ namespace Xtreamium.Proxy.Data.Migrations;
 public class InitialSeed : Migration{
   public override void Up() {
     Insert.IntoTable("settings").Row(new {
-      MpvArguments = "--keep-open=yes --geometry=1024x768-0-0 --ontop --screen=2 --border=no {{URL}}",
+      MpvArguments = "--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}",
       RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
       Port = 5000
     });
