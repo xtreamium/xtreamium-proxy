@@ -12,8 +12,14 @@ public class AppConfiguration {
 }
 
 public class VideoPlayerConfiguration {
+  /// <summary>
+  /// Default MPV arguments constant for use in migrations and fallback scenarios
+  /// </summary>
+  public const string DefaultMpvArguments = "--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}";
+
   public string Executable { get; set; } = "/usr/bin/mpv";
-  public string DefaultArguments { get; set; } = "--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}";
+
+  public string DefaultArguments { get; set; } = string.Empty;
 }
 
 public class RecordingsConfiguration {

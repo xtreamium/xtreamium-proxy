@@ -1,4 +1,5 @@
 using FluentMigrator;
+using Xtreamium.Proxy.Configuration;
 
 namespace Xtreamium.Proxy.Data.Migrations;
 
@@ -6,7 +7,7 @@ namespace Xtreamium.Proxy.Data.Migrations;
 public class InitialSeed : Migration{
   public override void Up() {
     Insert.IntoTable("settings").Row(new {
-      MpvArguments = "--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}",
+      MpvArguments = VideoPlayerConfiguration.DefaultMpvArguments,
       RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
       Port = 5000
     });

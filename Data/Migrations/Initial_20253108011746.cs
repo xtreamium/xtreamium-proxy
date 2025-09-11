@@ -1,4 +1,5 @@
 using FluentMigrator;
+using Xtreamium.Proxy.Configuration;
 
 namespace Xtreamium.Proxy.Data.Migrations;
 
@@ -8,7 +9,7 @@ public class InitialTables : Migration {
     Create.Table("settings")
       .WithColumn("Id").AsInt32().PrimaryKey().Identity()
       .WithColumn("MpvArguments").AsString().NotNullable()
-      .WithDefaultValue("--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}")
+      .WithDefaultValue(VideoPlayerConfiguration.DefaultMpvArguments)
       .WithColumn("RecordingsPath").AsString().NotNullable().WithDefaultValue(
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"))
       .WithColumn("Port").AsInt32().NotNullable().WithDefaultValue(5000);

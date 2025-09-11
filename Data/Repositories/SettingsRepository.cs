@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data.Models;
 
 namespace Xtreamium.Proxy.Data.Repositories;
@@ -9,7 +11,11 @@ public interface ISettingsRepository : IRepository<Setting> {
 }
 
 public class SettingsRepository : Repository<Setting>, ISettingsRepository {
-  public SettingsRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory) { }
+  private readonly AppConfiguration _config;
+
+  public SettingsRepository(IDbConnectionFactory connectionFactory, IOptions<AppConfiguration> config) : base(connectionFactory) {
+    _config = config.Value;
+  }
 
   public async Task<Setting> GetSettingsAsync() {
     var settings = (await GetAllAsync()).FirstOrDefault();
@@ -20,8 +26,8 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
     }
 
     settings = new Setting {
-      MpvArguments = "--keep-open=yes --geometry=1024x768-0-0 --ontop --screen=2 --border=no {{URL}}",
-      RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
+      MpvArguments = _config.VideoPlayer.DefaultArguments,
+      RecordingsPath = _config.Recordings.Path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
       Port = 5000
     };
 
