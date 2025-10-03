@@ -12,10 +12,18 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Project file path
-PROJECT_FILE="../xtreamium-proxy.csproj"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+# Check if we're in a git repository first
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo -e "${RED}Error: Not in a git repository${NC}"
+    exit 1
+fi
+
+# Get the git root directory and navigate there
+GIT_ROOT=$(git rev-parse --show-toplevel)
+cd "$GIT_ROOT"
+
+# Project file path (now relative to git root)
+PROJECT_FILE="xtreamium-proxy.csproj"
 
 # Parse arguments
 INCREMENT_TYPE="patch"
@@ -39,12 +47,6 @@ if [ $# -gt 0 ]; then
 fi
 
 echo -e "${GREEN}Creating new release (incrementing $INCREMENT_TYPE version)...${NC}"
-
-# Check if we're in a git repository
-if ! git rev-parse --git-dir > /dev/null 2>&1; then
-    echo -e "${RED}Error: Not in a git repository${NC}"
-    exit 1
-fi
 
 # Check for uncommitted changes
 if [[ -n $(git status -s) ]]; then
@@ -155,4 +157,3 @@ gh release create "v$NEW_VERSION" \
 echo -e "${GREEN}✓ Release v$NEW_VERSION created successfully!${NC}"
 echo -e "${GREEN}✓ GitHub Action workflow will build and attach installers automatically${NC}"
 echo -e "${YELLOW}View release at: $(gh repo view --json url -q .url)/releases/tag/v$NEW_VERSION${NC}"
-
