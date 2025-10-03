@@ -115,5 +115,5 @@ Backup*/
 UpgradeLog*.XML
 src/.vs/config/applicationhost.config
 
-# JetBrains Rider's auto generated files
 .idea/
+.vscode/

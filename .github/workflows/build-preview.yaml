@@ -19,6 +19,9 @@ jobs:
     - name: Publish Windows
       run: dotnet publish xtreamium-proxy.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
 
+    - name: Remove Development Configuration
+      run: Remove-Item -Path "./publish/win/appsettings.Development.json" -ErrorAction SilentlyContinue
+
     - name: Create Windows Service Installer
       run: |
         # Create install script
@@ -130,6 +133,9 @@ jobs:
 
     - name: Publish Linux
       run: dotnet publish xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+
+    - name: Remove Development Configuration
+      run: rm -f ./publish/linux/appsettings.Development.json
 
     - name: Create Linux Installer
       run: |

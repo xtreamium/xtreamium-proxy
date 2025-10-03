@@ -13,49 +13,55 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.66" />
-    <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
-    <PackageReference Include="FFMpegCore" Version="5.2.0" />
-    <PackageReference Include="FluentMigrator.Runner" Version="7.1.0" />
-    <PackageReference Include="FluentValidation" Version="12.0.0" />
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
-    <PackageReference Include="Quartz.AspNetCore" Version="3.15.0" />
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0" />
-    <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.15.0" />
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Dapper" Version="2.1.66"/>
+    <PackageReference Include="Dapper.Contrib" Version="2.0.78"/>
+    <PackageReference Include="FFMpegCore" Version="5.2.0"/>
+    <PackageReference Include="FluentMigrator.Runner" Version="7.1.0"/>
+    <PackageReference Include="FluentValidation" Version="12.0.0"/>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0"/>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8"/>
+    <PackageReference Include="Quartz.AspNetCore" Version="3.15.0"/>
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0"/>
+    <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.15.0"/>
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0"/>
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Data\quartz.sql" />
-    <None Remove="Data\xtreamium.sql" />
-    <EmbeddedResource Include="Data\quartz.sql" />
-    <EmbeddedResource Remove="Logs\**" />
-    <None Remove="Logs\**" />
-    <EmbeddedResource Remove="publish\**" />
-    <None Remove="publish\**" />
+    <None Remove="Data\quartz.sql"/>
+    <None Remove="Data\xtreamium.sql"/>
+    <EmbeddedResource Include="Data\quartz.sql"/>
+    <EmbeddedResource Remove="Logs\**"/>
+    <None Remove="Logs\**"/>
+    <EmbeddedResource Remove="publish\**"/>
+    <None Remove="publish\**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Logs\**" />
-    <Compile Remove="publish\**" />
+    <Content Update="appsettings.Development.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Never"/>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="Logs\**" />
-    <Content Remove="publish\**" />
-    <Content Include=".github\workflows\build-preview.yaml" />
+    <Compile Remove="Logs\**"/>
+    <Compile Remove="publish\**"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Logs\**"/>
+    <Content Remove="publish\**"/>
+    <Content Include=".github\workflows\build-preview.yaml"/>
   </ItemGroup>
 
   <!-- Simplified: Exclude entire publish and logs directories -->
   <ItemGroup>
-    <Content Remove="publish/**" />
-    <Compile Remove="publish/**" />
-    <EmbeddedResource Remove="publish/**" />
+    <Content Remove="publish/**"/>
+    <Compile Remove="publish/**"/>
+    <EmbeddedResource Remove="publish/**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <EditorConfigFiles Remove=".editorconfig" />
+    <EditorConfigFiles Remove=".editorconfig"/>
   </ItemGroup>
 
 </Project>
