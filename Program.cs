@@ -55,6 +55,7 @@ app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
 app.MapGet("/", () => "Hello, Sailor!");
 app.MapGet("/ping", () => new {Ping = "Pong"});
 
+app.RegisterVersionEndpoints();
 app.RegisterPlayerEndpoints();
 app.RegisterRecordEndpoints();
 app.RegisterSettingsEndpoints();
