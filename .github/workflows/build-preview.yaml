@@ -160,7 +160,7 @@ jobs:
         NoNewPrivileges=true
         ProtectSystem=strict
         ProtectHome=true
-        ReadWritePaths=/opt/xtreamium-proxy/Data
+        ReadWritePaths=/opt/xtreamium-proxy/data
         ReadWritePaths=/var/log/xtreamium-proxy
 
         [Install]

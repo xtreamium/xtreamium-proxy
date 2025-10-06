@@ -14,6 +14,9 @@ builder.Services.Configure<CorsConfiguration>(builder.Configuration.GetSection(C
 builder.Services.AddDatabase();
 builder.Services.AddMigrations();
 
+// Add systemd support for Type=notify service
+builder.Host.UseSystemd();
+
 builder.Host.UseSerilog((context, configuration) =>
   configuration.ReadFrom.Configuration(context.Configuration));
 
