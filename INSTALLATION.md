@@ -259,7 +259,7 @@ systemctl --user restart xtreamium-proxy-user
 ## Accessing the Application
 
 Once installed and running, the application will be available at:
-- Default URL: `http://localhost:5000` (check appsettings.json for actual port)
+- Default URL: `http://localhost:8963` (check appsettings.json for actual port)
 - Web interface for configuration and monitoring
 
 ---
@@ -289,7 +289,7 @@ Once installed and running, the application will be available at:
    - Check systemd service file syntax
 
 3. **Port binding issues**
-   - Check if port is already in use: `netstat -tulpn | grep :5000`
+   - Check if port is already in use: `netstat -tulpn | grep :8963`
    - Modify port in appsettings.json
    - For ports < 1024, system service may be required
 

@@ -9,7 +9,7 @@ public class InitialSeed : Migration{
     Insert.IntoTable("settings").Row(new {
       MpvArguments = VideoPlayerConfiguration.DefaultMpvArguments,
       RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
-      Port = 5000
+      Port = 8963
     });
   }
 

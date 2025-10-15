@@ -12,7 +12,7 @@ public class InitialTables : Migration {
       .WithDefaultValue(VideoPlayerConfiguration.DefaultMpvArguments)
       .WithColumn("RecordingsPath").AsString().NotNullable().WithDefaultValue(
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"))
-      .WithColumn("Port").AsInt32().NotNullable().WithDefaultValue(5000);
+      .WithColumn("Port").AsInt32().NotNullable().WithDefaultValue(8963);
 
     Create.Table("recordings")
       .WithColumn("Id").AsInt32().PrimaryKey().Identity()

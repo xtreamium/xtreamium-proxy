@@ -35,12 +35,15 @@
     <None Remove="logs\**"/>
     <EmbeddedResource Remove="publish\**"/>
     <None Remove="publish\**"/>
+    <None Include=".krud\.gitignore" />
+    <None Include=".krud\.SRCINFO" />
+    <None Include=".krud\PKGBUILD" />
+    <None Include=".krud\update-sha.sh" />
+    <None Include=".krud\xtreamium-proxy-1.3.0.tar.gz" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="appsettings.Development.json"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="Never"/>
+    <Content Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>

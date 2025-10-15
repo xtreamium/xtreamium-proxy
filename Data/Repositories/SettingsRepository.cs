@@ -13,7 +13,8 @@ public interface ISettingsRepository : IRepository<Setting> {
 public class SettingsRepository : Repository<Setting>, ISettingsRepository {
   private readonly AppConfiguration _config;
 
-  public SettingsRepository(IDbConnectionFactory connectionFactory, IOptions<AppConfiguration> config) : base(connectionFactory) {
+  public SettingsRepository(IDbConnectionFactory connectionFactory, IOptions<AppConfiguration> config) : base(
+    connectionFactory) {
     _config = config.Value;
   }
 
@@ -27,8 +28,9 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
 
     settings = new Setting {
       MpvArguments = _config.VideoPlayer.DefaultArguments,
-      RecordingsPath = _config.Recordings.Path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
-      Port = 5000
+      RecordingsPath = _config.Recordings.Path ??
+                       Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
+      Port = 8963
     };
 
     await InsertAsync(settings);
