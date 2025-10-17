@@ -25,6 +25,7 @@
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0"/>
     <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.15.0"/>
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0"/>
+    <PackageReference Include="Velopack" Version="0.0.942" Condition="'$(OS)' == 'Windows_NT'" />
   </ItemGroup>
 
   <ItemGroup>

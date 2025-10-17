@@ -16,109 +16,23 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Publish Windows
-      run: dotnet publish xtreamium-proxy.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
-
-    - name: Remove Development Configuration
-      run: Remove-Item -Path "./publish/win/appsettings.Development.json" -ErrorAction SilentlyContinue
-
-    - name: Create Windows Service Installer
+    - name: Build Windows Installer with Velopack
+      shell: pwsh
       run: |
-        # Create install script
-        @"
-        @echo off
-        echo Installing Xtreamium Proxy Service...
+        $version = "${{ github.ref_name }}"
+        # Handle branch names vs tags
+        if ($version -eq "develop" -or $version -eq "refs/heads/develop" -or $version.StartsWith("refs/heads/")) {
+          $version = "0.0.0-preview"
+        }
+        ./scripts/packaging/build-windows-installer.ps1 -Version $version
+      env:
+        VERSION: ${{ github.ref_name }}
 
-        set SERVICE_NAME=XtreamiumProxy
-        set SERVICE_DISPLAY=Xtreamium Proxy Service
-        set SERVICE_EXE=%~dp0xtreamium-proxy.exe
-
-        REM Stop service if running
-        sc query %SERVICE_NAME% >nul 2>&1
-        if %errorlevel% equ 0 (
-            echo Stopping existing service...
-            sc stop %SERVICE_NAME%
-            timeout /t 5 /nobreak >nul
-        )
-
-        REM Delete existing service
-        sc delete %SERVICE_NAME% >nul 2>&1
-
-        REM Create service
-        sc create %SERVICE_NAME% binPath= "\"%SERVICE_EXE%\"" DisplayName= "%SERVICE_DISPLAY%" start= auto
-
-        if %errorlevel% equ 0 (
-            echo Service installed successfully
-            echo Starting service...
-            sc start %SERVICE_NAME%
-        ) else (
-            echo Failed to install service
-            exit /b 1
-        )
-
-        pause
-        "@ | Out-File -FilePath "./publish/win/install-service.bat" -Encoding ASCII
-
-        # Create uninstall script
-        @"
-        @echo off
-        echo Uninstalling Xtreamium Proxy Service...
-
-        set SERVICE_NAME=XtreamiumProxy
-
-        sc query %SERVICE_NAME% >nul 2>&1
-        if %errorlevel% equ 0 (
-            echo Stopping service...
-            sc stop %SERVICE_NAME%
-            timeout /t 5 /nobreak >nul
-
-            echo Deleting service...
-            sc delete %SERVICE_NAME%
-
-            if %errorlevel% equ 0 (
-                echo Service uninstalled successfully
-            ) else (
-                echo Failed to uninstall service
-                exit /b 1
-            )
-        ) else (
-            echo Service not found
-        )
-
-        pause
-        "@ | Out-File -FilePath "./publish/win/uninstall-service.bat" -Encoding ASCII
-
-        # Create README
-        @"
-        # Xtreamium Proxy Windows Service
-
-        ## Installation
-        1. Run install-service.bat as Administrator
-        2. The service will be installed and started automatically
-        3. Service will start automatically on system boot
-
-        ## Uninstallation
-        1. Run uninstall-service.bat as Administrator
-
-        ## Manual Service Management
-        - Start: sc start XtreamiumProxy
-        - Stop: sc stop XtreamiumProxy
-        - Status: sc query XtreamiumProxy
-
-        ## Configuration
-        Edit appsettings.json to configure the application.
-        Service logs are available in Windows Event Viewer under Applications and Services Logs.
-        "@ | Out-File -FilePath "./publish/win/README.md" -Encoding UTF8
-
-    - name: Create Windows ZIP package
-      run: |
-        Compress-Archive -Path "./publish/win/*" -DestinationPath "./xtreamium-proxy-windows.zip"
-
-    - name: Upload Windows Artifact
+    - name: Upload Windows Installer
       uses: actions/upload-artifact@v4
       with:
-        name: xtreamium-proxy-windows
-        path: ./xtreamium-proxy-windows.zip
+        name: xtreamium-proxy-windows-installer
+        path: publish/packages/*.exe
 
   build-linux:
     runs-on: ubuntu-latest
@@ -395,10 +309,10 @@ jobs:
     if: github.event_name == 'release'
 
     steps:
-    - name: Download Windows Artifact
+    - name: Download Windows Installer
       uses: actions/download-artifact@v4
       with:
-        name: xtreamium-proxy-windows
+        name: xtreamium-proxy-windows-installer
 
     - name: Download Linux Artifact
       uses: actions/download-artifact@v4
@@ -424,7 +338,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          xtreamium-proxy-windows.zip
+          *.exe
           xtreamium-proxy-linux.tar.gz
           *.deb
           *.rpm

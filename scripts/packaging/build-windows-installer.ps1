@@ -1,0 +1,80 @@
+#!/usr/bin/env pwsh
+param(
+    [string]$Version = "",
+    [string]$OutputDir = "publish/packages"
+)
+
+# Get version from .csproj if not provided
+if ([string]::IsNullOrEmpty($Version)) {
+    [xml]$csproj = Get-Content "xtreamium-proxy.csproj"
+    $Version = $csproj.Project.PropertyGroup.Version
+}
+
+# Remove 'v' prefix if present
+$Version = $Version -replace '^v', ''
+
+Write-Host "Building Windows installer for version $Version" -ForegroundColor Green
+
+# Ensure output directory exists
+New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+
+# Build the application
+Write-Host "Building application..." -ForegroundColor Yellow
+dotnet publish xtreamium-proxy.csproj `
+    -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -p:PublishSingleFile=false `
+    -p:Version=$Version `
+    -o publish/win-x64
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Build failed!"
+    exit 1
+}
+
+# Remove development configuration
+Remove-Item -Path "publish/win-x64/appsettings.Development.json" -ErrorAction SilentlyContinue
+
+# Install Velopack if not present
+if (-not (Test-Path "tools/vpk")) {
+    Write-Host "Installing Velopack..." -ForegroundColor Yellow
+    dotnet tool install --tool-path tools vpk
+}
+
+Write-Host "Creating Velopack installer..." -ForegroundColor Yellow
+
+# Build installer with Velopack
+& "tools/vpk" pack `
+    --packId XtreamiumProxy `
+    --packVersion $Version `
+    --packDir publish/win-x64 `
+    --mainExe xtreamium-proxy.exe `
+    --outputDir publish/releases `
+    --packTitle "Xtreamium Proxy" `
+    --packAuthors "Xtreamium"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Velopack pack failed!"
+    exit 1
+}
+
+# Copy installer to output directory
+$installerName = "XtreamiumProxy-Setup-$Version.exe"
+$sourceInstaller = Get-ChildItem -Path "publish/releases" -Filter "*Setup.exe" | Select-Object -First 1
+
+if ($sourceInstaller) {
+    Copy-Item $sourceInstaller.FullName "$OutputDir/$installerName" -Force
+    Write-Host "`n✓ Windows installer created successfully!" -ForegroundColor Green
+    Write-Host "  Location: $OutputDir/$installerName" -ForegroundColor Cyan
+} else {
+    Write-Error "Could not find generated installer in publish/releases"
+    exit 1
+}
+
+Write-Host "`nInstaller features:" -ForegroundColor Yellow
+Write-Host "  - Auto-updates from GitHub releases" -ForegroundColor White
+Write-Host "  - Silent installation support" -ForegroundColor White
+Write-Host "  - No admin rights required" -ForegroundColor White
+Write-Host "  - Delta updates (minimal download size)" -ForegroundColor White
+Write-Host "  - Modern, actively maintained (Velopack)" -ForegroundColor White

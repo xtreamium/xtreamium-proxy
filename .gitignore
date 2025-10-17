@@ -118,3 +118,10 @@ src/.vs/config/applicationhost.config
 .idea/
 .vscode/
 logs/
+
+# Velopack / Installer build artifacts
+tools/
+publish/releases/
+publish/packages/
+publish/win-x64/
+*.nupkg
