@@ -1,11 +1,15 @@
 services:
   windows:
     image: dockurr/windows
-    container_name: windows
+    container_name: xtreamium-windows-tiny11
     environment:
       VERSION: "tiny11"
       USERNAME: "admin"
       PASSWORD: "password"
+      LANGUAGE: "English"
+      REGION: "en-IE"
+      TIMEZONE: "GMT Standard Time"
+      KEYBOARD: "en-IE"
     devices:
       - /dev/kvm
     cap_add:

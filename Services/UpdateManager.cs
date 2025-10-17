@@ -106,6 +106,9 @@ public class UpdateManager : IDisposable
                 // First run after installation - configure Windows Service
                 try
                 {
+                    // Remove any desktop shortcuts that might have been created
+                    RemoveDesktopShortcuts();
+                    
                     InstallWindowsService();
                     
                     // Exit immediately after service installation
@@ -120,12 +123,14 @@ public class UpdateManager : IDisposable
                 }
             })
             .WithAfterInstallFastCallback((v) => {
-                // Quick post-install actions
+                // Quick post-install actions - remove shortcuts
+                RemoveDesktopShortcuts();
             })
             .WithAfterUpdateFastCallback((v) => {
                 // After update - restart the service instead of launching GUI
                 try
                 {
+                    RemoveDesktopShortcuts();
                     RestartWindowsService();
                     Environment.Exit(0);
                 }
@@ -150,16 +155,51 @@ public class UpdateManager : IDisposable
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RemoveDesktopShortcuts()
+    {
+        try
+        {
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            var commonDesktopPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+            
+            // Remove shortcuts from user desktop
+            var userShortcut = Path.Combine(desktopPath, "Xtreamium Proxy.lnk");
+            if (File.Exists(userShortcut))
+                File.Delete(userShortcut);
+            
+            var userShortcut2 = Path.Combine(desktopPath, "XtreamiumProxy.lnk");
+            if (File.Exists(userShortcut2))
+                File.Delete(userShortcut2);
+            
+            // Remove shortcuts from all users desktop
+            var commonShortcut = Path.Combine(commonDesktopPath, "Xtreamium Proxy.lnk");
+            if (File.Exists(commonShortcut))
+                File.Delete(commonShortcut);
+            
+            var commonShortcut2 = Path.Combine(commonDesktopPath, "XtreamiumProxy.lnk");
+            if (File.Exists(commonShortcut2))
+                File.Delete(commonShortcut2);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to remove desktop shortcuts: {ex.Message}");
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static void InstallWindowsService()
     {
         var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
         if (string.IsNullOrEmpty(exePath))
             return;
 
+        // Get current user account (DOMAIN\Username format)
+        var userName = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+
         var startInfo = new System.Diagnostics.ProcessStartInfo
         {
             FileName = "sc.exe",
-            Arguments = $"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Service\" start= auto",
+            Arguments = $"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Service\" start= auto obj= \"{userName}\"",
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,

@@ -8,8 +8,13 @@
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.4.7</Version>
+    <Version>1.4.6</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationIcon>scripts/packaging/branding/app-icon.ico</ApplicationIcon>
+    <Product>Xtreamium Proxy</Product>
+    <Company>Xtreamium</Company>
+    <Copyright>Copyright © Xtreamium 2025</Copyright>
+    <Description>Xtreamium Proxy Service</Description>
   </PropertyGroup>
 
   <!-- Define WINDOWS constant when building/publishing for Windows -->
