@@ -135,18 +135,37 @@ git push origin "$CURRENT_BRANCH"
 # Create GitHub release
 echo -e "${GREEN}Creating GitHub release v$NEW_VERSION...${NC}"
 
+# Get the previous release tag
+PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+# Generate changelog from git commits
+if [ -z "$PREVIOUS_TAG" ]; then
+    # No previous tag, get all commits
+    CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+else
+    # Get commits since last tag
+    CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"- %s" --no-merges)
+fi
+
+# If no changes, provide a default message
+if [ -z "$CHANGELOG" ]; then
+    CHANGELOG="- Version bump to $NEW_VERSION"
+fi
+
 # Generate release notes
 RELEASE_NOTES="Release v$NEW_VERSION
 
 ## Changes
-- Version bumped from $CURRENT_VERSION to $NEW_VERSION
+$CHANGELOG
 
 ## Installation
 Download the appropriate package for your platform:
-- **Windows**: \`xtreamium-proxy-windows.zip\`
-- **Linux**: \`xtreamium-proxy-linux.tar.gz\`
+- **Windows**: \`XtreamiumProxy-Setup-$NEW_VERSION.exe\` (auto-updating installer)
+- **Linux (Debian/Ubuntu)**: \`xtreamium-proxy_${NEW_VERSION}_amd64.deb\`
+- **Linux (Fedora/RHEL)**: \`xtreamium-proxy-${NEW_VERSION}-1.x86_64.rpm\`
+- **Linux (Arch)**: \`xtreamium-proxy-${NEW_VERSION}-1-x86_64.pkg.tar.zst\`
 
-See the included README files for installation instructions."
+See the included documentation for installation instructions."
 
 # Create the release (this will trigger the GitHub Action workflow)
 gh release create "v$NEW_VERSION" \
