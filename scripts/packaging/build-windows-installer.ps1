@@ -10,8 +10,8 @@ if ([string]::IsNullOrEmpty($Version)) {
     $Version = $csproj.Project.PropertyGroup.Version
 }
 
-# Remove 'v' prefix if present
-$Version = $Version -replace '^v', ''
+# Remove 'v' prefix if present and trim whitespace
+$Version = ($Version -replace '^v', '').Trim()
 
 Write-Host "Building Windows installer for version $Version" -ForegroundColor Green
 
@@ -58,6 +58,8 @@ $vpkArgs = @(
     "--outputDir", "publish/releases",
     "--packTitle", "Xtreamium Proxy",
     "--packAuthors", "Xtreamium"
+    # Note: Velopack doesn't create desktop shortcuts by default
+    # Shortcut creation is controlled via the installer options, not vpk pack flags
 )
 
 # Add icon if available

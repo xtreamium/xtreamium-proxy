@@ -107,14 +107,33 @@ public class UpdateManager : IDisposable
                 try
                 {
                     InstallWindowsService();
+                    
+                    // Exit immediately after service installation
+                    // Don't launch the GUI application
+                    Environment.Exit(0);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Failed to install service: {ex.Message}");
+                    // Still exit to prevent GUI launch
+                    Environment.Exit(1);
                 }
             })
             .WithAfterInstallFastCallback((v) => {
                 // Quick post-install actions
+            })
+            .WithAfterUpdateFastCallback((v) => {
+                // After update - restart the service instead of launching GUI
+                try
+                {
+                    RestartWindowsService();
+                    Environment.Exit(0);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to restart service: {ex.Message}");
+                    Environment.Exit(1);
+                }
             })
             .WithBeforeUninstallFastCallback((v) => {
                 // Uninstall Windows Service
@@ -163,6 +182,34 @@ public class UpdateManager : IDisposable
             using var startProcess = System.Diagnostics.Process.Start(startServiceInfo);
             startProcess?.WaitForExit();
         }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RestartWindowsService()
+    {
+        // Stop the service
+        var stopInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = "stop XtreamiumProxy",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var stopProcess = System.Diagnostics.Process.Start(stopInfo);
+        stopProcess?.WaitForExit();
+
+        System.Threading.Thread.Sleep(2000); // Wait for service to stop
+
+        // Start the service
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = "start XtreamiumProxy",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var startProcess = System.Diagnostics.Process.Start(startInfo);
+        startProcess?.WaitForExit();
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
