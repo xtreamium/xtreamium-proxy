@@ -1,12 +1,16 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+#if WINDOWS
 using Velopack;
 using Velopack.Sources;
+#endif
 
 namespace Xtreamium.Proxy.Services;
 
 public class UpdateManager : IDisposable
 {
+#if WINDOWS
     private readonly ILogger<UpdateManager> _logger;
     private readonly Velopack.UpdateManager? _updateManager;
     private readonly string _updateUrl;
@@ -19,7 +23,7 @@ public class UpdateManager : IDisposable
         try
         {
             // Only initialize update manager if we're running from Velopack installation
-            if (VelopackApp.IsInstalled)
+            if (VelopackApp.Build().IsInstalled)
             {
                 var source = new GithubSource(_updateUrl, null, false);
                 _updateManager = new Velopack.UpdateManager(source);
@@ -102,6 +106,7 @@ public class UpdateManager : IDisposable
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public static void HandleVelopackEvents()
     {
         VelopackApp.Build()
@@ -122,4 +127,34 @@ public class UpdateManager : IDisposable
     {
         _updateManager?.Dispose();
     }
+#else
+    // Dummy implementation for non-Windows platforms
+    private readonly ILogger<UpdateManager> _logger;
+
+    public UpdateManager(ILogger<UpdateManager> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _logger.LogInformation("Update manager not available on this platform");
+    }
+
+    public Task<bool> CheckForUpdatesAsync()
+    {
+        return Task.FromResult(false);
+    }
+
+    public Task<bool> DownloadAndInstallUpdatesAsync()
+    {
+        return Task.FromResult(false);
+    }
+
+    public static void HandleVelopackEvents()
+    {
+        // No-op on non-Windows platforms
+    }
+
+    public void Dispose()
+    {
+        // No-op
+    }
+#endif
 }
