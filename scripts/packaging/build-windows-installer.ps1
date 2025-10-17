@@ -45,15 +45,48 @@ if (-not (Test-Path "tools/vpk")) {
 
 Write-Host "Creating Velopack installer..." -ForegroundColor Yellow
 
+# Convert PNG to ICO if needed (requires ImageMagick or use online converter)
+$iconPath = "scripts/packaging/branding/app-icon.ico"
+if (-not (Test-Path $iconPath)) {
+    $pngPath = "scripts/packaging/branding/app-icon.png"
+    if (Test-Path $pngPath) {
+        Write-Host "Converting PNG icon to ICO format..." -ForegroundColor Yellow
+        
+        # Try to use magick (ImageMagick) if available
+        if (Get-Command magick -ErrorAction SilentlyContinue) {
+            magick convert $pngPath -define icon:auto-resize=256,128,96,64,48,32,16 $iconPath
+        }
+        # Try convert command (older ImageMagick)
+        elseif (Get-Command convert -ErrorAction SilentlyContinue) {
+            convert $pngPath -define icon:auto-resize=256,128,96,64,48,32,16 $iconPath
+        }
+        else {
+            Write-Warning "ImageMagick not found. Please convert app-icon.png to app-icon.ico manually or install ImageMagick."
+            Write-Warning "You can use: https://convertio.co/png-ico/ to convert the icon."
+            $iconPath = ""
+        }
+    }
+}
+
 # Build installer with Velopack
-& "tools/vpk" pack `
-    --packId XtreamiumProxy `
-    --packVersion $Version `
-    --packDir publish/win-x64 `
-    --mainExe xtreamium-proxy.exe `
-    --outputDir publish/releases `
-    --packTitle "Xtreamium Proxy" `
-    --packAuthors "Xtreamium"
+$vpkArgs = @(
+    "pack",
+    "--packId", "XtreamiumProxy",
+    "--packVersion", $Version,
+    "--packDir", "publish/win-x64",
+    "--mainExe", "xtreamium-proxy.exe",
+    "--outputDir", "publish/releases",
+    "--packTitle", "Xtreamium Proxy",
+    "--packAuthors", "Xtreamium"
+)
+
+# Add icon if available
+if ($iconPath -and (Test-Path $iconPath)) {
+    $vpkArgs += "--icon"
+    $vpkArgs += $iconPath
+}
+
+& "tools/vpk" @vpkArgs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Velopack pack failed!"

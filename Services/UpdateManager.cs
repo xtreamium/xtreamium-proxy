@@ -103,16 +103,94 @@ public class UpdateManager : IDisposable
     {
         VelopackApp.Build()
             .WithFirstRun((v) => {
-                // First run after installation - version parameter available
-                // Can create shortcuts, configure service, etc.
+                // First run after installation - configure Windows Service
+                try
+                {
+                    InstallWindowsService();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to install service: {ex.Message}");
+                }
             })
             .WithAfterInstallFastCallback((v) => {
                 // Quick post-install actions
             })
             .WithBeforeUninstallFastCallback((v) => {
-                // Quick pre-uninstall actions
+                // Uninstall Windows Service
+                try
+                {
+                    UninstallWindowsService();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to uninstall service: {ex.Message}");
+                }
             })
             .Run();
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void InstallWindowsService()
+    {
+        var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+        if (string.IsNullOrEmpty(exePath))
+            return;
+
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = $"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Service\" start= auto",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        using var process = System.Diagnostics.Process.Start(startInfo);
+        process?.WaitForExit();
+
+        if (process?.ExitCode == 0)
+        {
+            // Start the service
+            var startServiceInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "sc.exe",
+                Arguments = "start XtreamiumProxy",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var startProcess = System.Diagnostics.Process.Start(startServiceInfo);
+            startProcess?.WaitForExit();
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void UninstallWindowsService()
+    {
+        // Stop the service first
+        var stopInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = "stop XtreamiumProxy",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var stopProcess = System.Diagnostics.Process.Start(stopInfo);
+        stopProcess?.WaitForExit();
+
+        System.Threading.Thread.Sleep(2000); // Wait for service to stop
+
+        // Delete the service
+        var deleteInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = "delete XtreamiumProxy",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var deleteProcess = System.Diagnostics.Process.Start(deleteInfo);
+        deleteProcess?.WaitForExit();
     }
 
     public void Dispose()

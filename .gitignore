@@ -125,3 +125,6 @@ publish/releases/
 publish/packages/
 publish/win-x64/
 *.nupkg
+
+# Docker testing - Windows VM storage
+scripts/testing/windows/storage/

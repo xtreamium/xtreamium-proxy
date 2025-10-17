@@ -1,0 +1,20 @@
+services:
+  windows:
+    image: dockurr/windows
+    container_name: windows
+    environment:
+      VERSION: "tiny11"
+      USERNAME: "admin"
+      PASSWORD: "password"
+    devices:
+      - /dev/kvm
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8011:8006
+      - 3394:3389/tcp
+      - 3394:3389/udp
+    stop_grace_period: 2m
+    restart: on-failure
+    volumes:
+      - ./storage:/storage
