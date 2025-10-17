@@ -23,9 +23,25 @@ public class VideoPlayerConfiguration {
 }
 
 public class RecordingsConfiguration {
-  private static readonly string DefaultRecordingsPath = System.IO.Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-    "XtreamiumRecordings");
+  private static readonly string DefaultRecordingsPath = GetDefaultRecordingsPath();
+
+  private static string GetDefaultRecordingsPath() {
+    // For Windows Services running as system account, use CommonApplicationData
+    // For regular user applications, use MyDocuments
+    if (OperatingSystem.IsWindows() && 
+        string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USERPROFILE"))) {
+      // Running as Windows Service (LOCAL SYSTEM)
+      return System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "Xtreamium",
+        "Recordings");
+    }
+    
+    // Regular user context
+    return System.IO.Path.Combine(
+      Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+      "XtreamiumRecordings");
+  }
 
   public string Path { get; set; } = DefaultRecordingsPath;
   public int MinDurationMinutes { get; set; } = 1;
