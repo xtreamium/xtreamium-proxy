@@ -8,8 +8,7 @@ using Velopack.Sources;
 
 namespace Xtreamium.Proxy.Services;
 
-public class UpdateManager : IDisposable
-{
+public class UpdateManager : IDisposable {
 #if WINDOWS
     private readonly ILogger<UpdateManager> _logger;
     private readonly Velopack.UpdateManager? _updateManager;
@@ -286,33 +285,28 @@ public class UpdateManager : IDisposable
         // No cleanup needed
     }
 #else
-    // Dummy implementation for non-Windows platforms
-    private readonly ILogger<UpdateManager> _logger;
+  // Dummy implementation for non-Windows platforms
+  private readonly ILogger<UpdateManager> _logger;
 
-    public UpdateManager(ILogger<UpdateManager> logger, IConfiguration configuration)
-    {
-        _logger = logger;
-        _logger.LogInformation("Update manager not available on this platform");
-    }
+  public UpdateManager(ILogger<UpdateManager> logger, IConfiguration configuration) {
+    _logger = logger;
+    _logger.LogInformation("Update manager not available on this platform");
+  }
 
-    public Task<bool> CheckForUpdatesAsync()
-    {
-        return Task.FromResult(false);
-    }
+  public Task<bool> CheckForUpdatesAsync() {
+    return Task.FromResult(false);
+  }
 
-    public Task<bool> DownloadAndInstallUpdatesAsync()
-    {
-        return Task.FromResult(false);
-    }
+  public Task<bool> DownloadAndInstallUpdatesAsync() {
+    return Task.FromResult(false);
+  }
 
-    public static void HandleVelopackEvents()
-    {
-        // No-op on non-Windows platforms
-    }
+  public static void HandleVelopackEvents() {
+    // No-op on non-Windows platforms
+  }
 
-    public void Dispose()
-    {
-        // No-op
-    }
+  public void Dispose() {
+    // No-op
+  }
 #endif
 }

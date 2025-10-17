@@ -23,7 +23,11 @@ public class VideoPlayerConfiguration {
 }
 
 public class RecordingsConfiguration {
-  public string Path { get; set; } = "";
+  private static readonly string DefaultRecordingsPath = System.IO.Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+    "XtreamiumRecordings");
+
+  public string Path { get; set; } = DefaultRecordingsPath;
   public int MinDurationMinutes { get; set; } = 1;
   public int MaxDurationMinutes { get; set; } = 600;
 }

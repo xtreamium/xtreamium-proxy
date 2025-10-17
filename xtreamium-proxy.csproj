@@ -8,7 +8,7 @@
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.4.8</Version>
+    <Version>1.4.6</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationIcon>scripts/packaging/branding/app-icon.ico</ApplicationIcon>
     <Product>Xtreamium Proxy</Product>
@@ -36,6 +36,7 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0"/>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
     <PackageReference Include="Quartz.AspNetCore" Version="3.15.0"/>
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0"/>
     <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.15.0"/>
