@@ -1,0 +1,119 @@
+# nfpm configuration for xtreamium-proxy
+# https://nfpm.goreleaser.com/
+
+name: "xtreamium-proxy"
+arch: "amd64"
+platform: "linux"
+version: "${VERSION}"
+section: "default"
+priority: "optional"
+maintainer: "Xtreamium <support@xtreamium.com>"
+description: |
+  Xtreamium Proxy - A streaming proxy service
+  A modern streaming proxy built with .NET 9
+vendor: "Xtreamium"
+homepage: "https://github.com/xtreamium/xtreamium-proxy"
+license: "MIT"
+
+# Dependencies
+depends:
+  - ffmpeg
+
+# Recommended packages
+recommends:
+  - mpv
+
+# Contents to package
+contents:
+  # Main application binary
+  - src: "../../publish/linux/xtreamium-proxy"
+    dst: "/opt/xtreamium-proxy/xtreamium-proxy"
+    file_info:
+      mode: 0755
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+  # Configuration file
+  - src: "../../publish/linux/appsettings.json"
+    dst: "/etc/xtreamium-proxy/appsettings.json"
+    type: "config|noreplace"
+    file_info:
+      mode: 0644
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+  # Global configuration
+  - src: "../../publish/linux/global.json"
+    dst: "/opt/xtreamium-proxy/global.json"
+    file_info:
+      mode: 0644
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+  # Systemd service file
+  - src: "./systemd/xtreamium-proxy.service"
+    dst: "/usr/lib/systemd/system/xtreamium-proxy.service"
+    type: "config"
+    file_info:
+      mode: 0644
+
+  # Create necessary directories
+  - dst: "/var/lib/xtreamium-proxy"
+    type: "dir"
+    file_info:
+      mode: 0755
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+  - dst: "/var/log/xtreamium-proxy"
+    type: "dir"
+    file_info:
+      mode: 0755
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+  - dst: "/var/lib/xtreamium-proxy/recordings"
+    type: "dir"
+    file_info:
+      mode: 0755
+      owner: xtreamium-proxy
+      group: xtreamium-proxy
+
+# Scripts
+scripts:
+  preinstall: ./scripts/preinstall.sh
+  postinstall: ./scripts/postinstall.sh
+  preremove: ./scripts/preremove.sh
+  postremove: ./scripts/postremove.sh
+
+# Overrides for specific package formats
+overrides:
+  deb:
+    depends:
+      - ffmpeg
+    recommends:
+      - mpv
+    
+  rpm:
+    depends:
+      - ffmpeg
+    recommends:
+      - mpv
+    
+  archlinux:
+    depends:
+      - ffmpeg
+
+# Package metadata
+rpm:
+  group: "Applications/Internet"
+  summary: "Xtreamium Proxy - A streaming proxy service"
+  compression: lzma
+
+deb:
+  fields:
+    Bugs: "https://github.com/xtreamium/xtreamium-proxy/issues"
+
+archlinux:
+  pkgbase: "xtreamium-proxy"
+  packager: "Xtreamium <support@xtreamium.com>"

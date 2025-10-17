@@ -137,6 +137,20 @@ jobs:
     - name: Remove Development Configuration
       run: rm -f ./publish/linux/appsettings.Development.json
 
+    - name: Install nfpm
+      run: |
+        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+        sudo apt update
+        sudo apt install nfpm
+
+    - name: Build Distribution Packages
+      run: |
+        cd scripts/packaging
+        chmod +x build-packages.sh scripts/*.sh
+        ./build-packages.sh
+      env:
+        VERSION: ${{ github.ref_name }}
+
     - name: Create Linux Installer
       run: |
         # Create systemd service file
@@ -357,6 +371,24 @@ jobs:
         name: xtreamium-proxy-linux
         path: ./xtreamium-proxy-linux.tar.gz
 
+    - name: Upload DEB Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: xtreamium-proxy-deb
+        path: ./publish/packages/*.deb
+
+    - name: Upload RPM Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: xtreamium-proxy-rpm
+        path: ./publish/packages/*.rpm
+
+    - name: Upload Arch Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: xtreamium-proxy-arch
+        path: ./publish/packages/*.pkg.tar.zst
+
   release:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -373,11 +405,29 @@ jobs:
       with:
         name: xtreamium-proxy-linux
 
+    - name: Download DEB Package
+      uses: actions/download-artifact@v4
+      with:
+        name: xtreamium-proxy-deb
+
+    - name: Download RPM Package
+      uses: actions/download-artifact@v4
+      with:
+        name: xtreamium-proxy-rpm
+
+    - name: Download Arch Package
+      uses: actions/download-artifact@v4
+      with:
+        name: xtreamium-proxy-arch
+
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
       with:
         files: |
           xtreamium-proxy-windows.zip
           xtreamium-proxy-linux.tar.gz
+          *.deb
+          *.rpm
+          *.pkg.tar.zst
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
