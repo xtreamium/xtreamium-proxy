@@ -313,35 +313,40 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: xtreamium-proxy-windows-installer
+        path: ./artifacts/windows
 
     - name: Download Linux Artifact
       uses: actions/download-artifact@v4
       with:
         name: xtreamium-proxy-linux
+        path: ./artifacts/linux
 
     - name: Download DEB Package
       uses: actions/download-artifact@v4
       with:
         name: xtreamium-proxy-deb
+        path: ./artifacts/deb
 
     - name: Download RPM Package
       uses: actions/download-artifact@v4
       with:
         name: xtreamium-proxy-rpm
+        path: ./artifacts/rpm
 
     - name: Download Arch Package
       uses: actions/download-artifact@v4
       with:
         name: xtreamium-proxy-arch
+        path: ./artifacts/arch
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          *.exe
-          xtreamium-proxy-linux.tar.gz
-          *.deb
-          *.rpm
-          *.pkg.tar.zst
+          ./artifacts/windows/*.exe
+          ./artifacts/linux/*.tar.gz
+          ./artifacts/deb/*.deb
+          ./artifacts/rpm/*.rpm
+          ./artifacts/arch/*.pkg.tar.zst
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
