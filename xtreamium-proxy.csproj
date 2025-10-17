@@ -8,11 +8,17 @@
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.3.2</Version>
+    <Version>1.4.3</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+  <!-- Define WINDOWS constant when building/publishing for Windows -->
+  <PropertyGroup Condition="$(RuntimeIdentifier.Contains('win'))">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+  
+  <!-- Also define WINDOWS when OS is Windows and no specific RID is set -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' AND '$(RuntimeIdentifier)' == ''">
     <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
   </PropertyGroup>
 

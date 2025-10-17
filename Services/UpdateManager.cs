@@ -22,17 +22,9 @@ public class UpdateManager : IDisposable
 
         try
         {
-            // Only initialize update manager if we're running from Velopack installation
-            if (VelopackApp.Build().IsInstalled)
-            {
-                var source = new GithubSource(_updateUrl, null, false);
-                _updateManager = new Velopack.UpdateManager(source);
-                _logger.LogInformation("Update manager initialized with URL: {Url}", _updateUrl);
-            }
-            else
-            {
-                _logger.LogInformation("Not running from Velopack installation, updates disabled");
-            }
+            var source = new GithubSource(_updateUrl, null, false);
+            _updateManager = new Velopack.UpdateManager(source);
+            _logger.LogInformation("Update manager initialized with URL: {Url}", _updateUrl);
         }
         catch (Exception ex)
         {
@@ -125,7 +117,8 @@ public class UpdateManager : IDisposable
 
     public void Dispose()
     {
-        _updateManager?.Dispose();
+        // Velopack UpdateManager doesn't implement IDisposable
+        // No cleanup needed
     }
 #else
     // Dummy implementation for non-Windows platforms

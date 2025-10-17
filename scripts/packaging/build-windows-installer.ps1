@@ -26,6 +26,7 @@ dotnet publish xtreamium-proxy.csproj `
     --self-contained true `
     -p:PublishSingleFile=false `
     -p:Version=$Version `
+    -p:DefineConstants=WINDOWS `
     -o publish/win-x64
 
 if ($LASTEXITCODE -ne 0) {
