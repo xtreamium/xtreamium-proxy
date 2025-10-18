@@ -10,6 +10,8 @@ services:
       REGION: "en-IE"
       TIMEZONE: "GMT Standard Time"
       KEYBOARD: "en-IE"
+      RAM_SIZE: "8G"
+      CPU_CORES: "4"
     devices:
       - /dev/kvm
     cap_add:
