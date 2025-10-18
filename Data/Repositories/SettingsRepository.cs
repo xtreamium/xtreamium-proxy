@@ -5,9 +5,10 @@ using Xtreamium.Proxy.Data.Models;
 namespace Xtreamium.Proxy.Data.Repositories;
 
 public interface ISettingsRepository : IRepository<Setting> {
-  Task<Setting> GetSettingsAsync();
-
-  Task<Setting> UpdateOrCreateSettingsAsync(Setting settings);
+  Task<Dictionary<string, string>> GetSettingsAsync();
+  Task<string?> GetSettingAsync(string key);
+  Task UpdateOrCreateSettingAsync(string key, string value);
+  Task UpdateOrCreateSettingsAsync(Dictionary<string, string> settings);
 }
 
 public class SettingsRepository : Repository<Setting>, ISettingsRepository {
@@ -18,40 +19,55 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
     _config = config.Value;
   }
 
-  public async Task<Setting> GetSettingsAsync() {
-    var settings = (await GetAllAsync()).FirstOrDefault();
-
-    // Return default settings if none exist
-    if (settings != null) {
-      return settings;
+  public async Task<Dictionary<string, string>> GetSettingsAsync() {
+    var settings = await GetAllAsync();
+    var settingsDict = settings.ToDictionary(s => s.Key, s => s.Value);
+    
+    // Ensure default settings exist
+    if (!settingsDict.ContainsKey("MediaPlayerPath")) {
+      await UpdateOrCreateSettingAsync("MediaPlayerPath", _config.VideoPlayer.MediaPlayerPath);
+      settingsDict["MediaPlayerPath"] = _config.VideoPlayer.MediaPlayerPath;
     }
-
-    settings = new Setting {
-      MediaPlayerPath = _config.VideoPlayer.Executable,
-      MediaPlayerArguments = _config.VideoPlayer.DefaultArguments,
-      RecordingsPath = _config.Recordings.Path ??
-                       Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
-      Port = 8963
-    };
-
-    await InsertAsync(settings);
-
-    return settings;
+    
+    if (!settingsDict.ContainsKey("MediaPlayerArguments")) {
+      await UpdateOrCreateSettingAsync("MediaPlayerArguments", _config.VideoPlayer.MediaPlayerArguments);
+      settingsDict["MediaPlayerArguments"] = _config.VideoPlayer.MediaPlayerArguments;
+    }
+    
+    if (!settingsDict.ContainsKey("RecordingsPath")) {
+      var defaultPath = _config.Recordings.Path ?? 
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings");
+      await UpdateOrCreateSettingAsync("RecordingsPath", defaultPath);
+      settingsDict["RecordingsPath"] = defaultPath;
+    }
+    
+    if (!settingsDict.ContainsKey("Port")) {
+      await UpdateOrCreateSettingAsync("Port", "8963");
+      settingsDict["Port"] = "8963";
+    }
+    
+    return settingsDict;
   }
 
-  public async Task<Setting> UpdateOrCreateSettingsAsync(Setting newSettings) {
-    var existing = (await GetAllAsync()).FirstOrDefault();
+  public async Task<string?> GetSettingAsync(string key) {
+    var settings = await GetAllAsync();
+    return settings.FirstOrDefault(s => s.Key == key)?.Value;
+  }
+
+  public async Task UpdateOrCreateSettingAsync(string key, string value) {
+    var existing = (await GetAllAsync()).FirstOrDefault(s => s.Key == key);
 
     if (existing == null) {
-      await InsertAsync(newSettings);
-      return newSettings;
+      await InsertAsync(new Setting { Key = key, Value = value });
+    } else {
+      existing = existing with { Value = value };
+      await UpdateAsync(existing);
     }
+  }
 
-    existing.MediaPlayerArguments = newSettings.MediaPlayerArguments;
-    existing.RecordingsPath = newSettings.RecordingsPath;
-    existing.Port = newSettings.Port;
-
-    await UpdateAsync(existing);
-    return existing;
+  public async Task UpdateOrCreateSettingsAsync(Dictionary<string, string> settings) {
+    foreach (var (key, value) in settings) {
+      await UpdateOrCreateSettingAsync(key, value);
+    }
   }
 }

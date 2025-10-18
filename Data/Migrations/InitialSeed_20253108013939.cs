@@ -7,9 +7,23 @@ namespace Xtreamium.Proxy.Data.Migrations;
 public class InitialSeed : Migration{
   public override void Up() {
     Insert.IntoTable("settings").Row(new {
-      MpvArguments = VideoPlayerConfiguration.DefaultMpvArguments,
-      RecordingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
-      Port = 8963
+      Key = "MediaPlayerPath",
+      Value = VideoPlayerConfiguration.DefaultMediaPlayerPath
+    });
+    
+    Insert.IntoTable("settings").Row(new {
+      Key = "MediaPlayerArguments",
+      Value = VideoPlayerConfiguration.DefaultMediaPlayerArguments
+    });
+    
+    Insert.IntoTable("settings").Row(new {
+      Key = "RecordingsPath",
+      Value = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings")
+    });
+    
+    Insert.IntoTable("settings").Row(new {
+      Key = "Port",
+      Value = "8963"
     });
   }
 

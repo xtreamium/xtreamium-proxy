@@ -13,10 +13,10 @@ public static class SettingsEndpoint {
     endpoints.MapGet("", async ([FromServices] ISettingsRepository settingsRepository) => {
       var settings = await settingsRepository.GetSettingsAsync();
       var vm = new SettingsVm {
-        MediaPlayerPath = settings.MediaPlayerPath,
-        MediaPlayerArguments = settings.MediaPlayerArguments,
-        RecordingsPath = settings.RecordingsPath,
-        Port = settings.Port
+        MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
+        MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
+        RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
+        Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963
       };
       return Results.Ok(vm);
     });
@@ -32,11 +32,11 @@ public static class SettingsEndpoint {
           return Results.BadRequest(validationResult.Errors);
         }
 
-        var settings = new Setting {
-          MediaPlayerPath = request.MediaPlayerPath,
-          MediaPlayerArguments = request.MediaPlayerArguments,
-          RecordingsPath = request.RecordingsPath,
-          Port = request.Port
+        var settings = new Dictionary<string, string> {
+          { "MediaPlayerPath", request.MediaPlayerPath },
+          { "MediaPlayerArguments", request.MediaPlayerArguments },
+          { "RecordingsPath", request.RecordingsPath },
+          { "Port", request.Port.ToString() }
         };
 
         await settingsRepository.UpdateOrCreateSettingsAsync(settings);

@@ -1,4 +1,3 @@
-using Xtreamium.Proxy.Data.Models;
 using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
 
@@ -22,10 +21,10 @@ public static class SettingsHelper {
 
     var settings = await _repository.GetSettingsAsync();
     return new SettingsVm {
-      MediaPlayerPath = settings.MediaPlayerPath,
-      MediaPlayerArguments = settings.MediaPlayerArguments,
-      RecordingsPath = settings.RecordingsPath,
-      Port = settings.Port
+      MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
+      MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
+      RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
+      Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963
     };
   }
 
@@ -34,11 +33,11 @@ public static class SettingsHelper {
       throw new InvalidOperationException("SettingsHelper not initialized. Use ISettingsRepository directly instead.");
     }
 
-    var settings = new Setting {
-      MediaPlayerPath = request.MediaPlayerPath,
-      MediaPlayerArguments = request.MediaPlayerArguments,
-      RecordingsPath = request.RecordingsPath,
-      Port = request.Port
+    var settings = new Dictionary<string, string> {
+      { "MediaPlayerPath", request.MediaPlayerPath },
+      { "MediaPlayerArguments", request.MediaPlayerArguments },
+      { "RecordingsPath", request.RecordingsPath },
+      { "Port", request.Port.ToString() }
     };
 
     await _repository.UpdateOrCreateSettingsAsync(settings);

@@ -8,11 +8,8 @@ public class InitialTables : Migration {
   public override void Up() {
     Create.Table("settings")
       .WithColumn("Id").AsInt32().PrimaryKey().Identity()
-      .WithColumn("MpvArguments").AsString().NotNullable()
-      .WithDefaultValue(VideoPlayerConfiguration.DefaultMpvArguments)
-      .WithColumn("RecordingsPath").AsString().NotNullable().WithDefaultValue(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"))
-      .WithColumn("Port").AsInt32().NotNullable().WithDefaultValue(8963);
+      .WithColumn("Key").AsString().NotNullable().Unique()
+      .WithColumn("Value").AsString().NotNullable();
 
     Create.Table("recordings")
       .WithColumn("Id").AsInt32().PrimaryKey().Identity()

@@ -7,8 +7,6 @@ public record Setting {
   [Key]
   public int Id { get; set; }
 
-  public required string MediaPlayerPath { get; set; }
-  public required string MediaPlayerArguments { get; set; }
-  public required string RecordingsPath { get; set; }
-  public int Port { get; set; } = 8080;
+  public required string Key { get; set; }
+  public required string Value { get; set; }
 }
