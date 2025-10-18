@@ -22,7 +22,8 @@ public static class SettingsHelper {
 
     var settings = await _repository.GetSettingsAsync();
     return new SettingsVm {
-      MpvArguments = settings.MpvArguments,
+      MediaPlayerPath = settings.MediaPlayerPath,
+      MediaPlayerArguments = settings.MediaPlayerArguments,
       RecordingsPath = settings.RecordingsPath,
       Port = settings.Port
     };
@@ -34,7 +35,8 @@ public static class SettingsHelper {
     }
 
     var settings = new Setting {
-      MpvArguments = request.MpvArguments,
+      MediaPlayerPath = request.MediaPlayerPath,
+      MediaPlayerArguments = request.MediaPlayerArguments,
       RecordingsPath = request.RecordingsPath,
       Port = request.Port
     };

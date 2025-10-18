@@ -27,7 +27,8 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
     }
 
     settings = new Setting {
-      MpvArguments = _config.VideoPlayer.DefaultArguments,
+      MediaPlayerPath = _config.VideoPlayer.Executable,
+      MediaPlayerArguments = _config.VideoPlayer.DefaultArguments,
       RecordingsPath = _config.Recordings.Path ??
                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings"),
       Port = 8963
@@ -46,7 +47,7 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
       return newSettings;
     }
 
-    existing.MpvArguments = newSettings.MpvArguments;
+    existing.MediaPlayerArguments = newSettings.MediaPlayerArguments;
     existing.RecordingsPath = newSettings.RecordingsPath;
     existing.Port = newSettings.Port;
 

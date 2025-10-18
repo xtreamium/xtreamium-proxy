@@ -13,7 +13,8 @@ public static class SettingsEndpoint {
     endpoints.MapGet("", async ([FromServices] ISettingsRepository settingsRepository) => {
       var settings = await settingsRepository.GetSettingsAsync();
       var vm = new SettingsVm {
-        MpvArguments = settings.MpvArguments,
+        MediaPlayerPath = settings.MediaPlayerPath,
+        MediaPlayerArguments = settings.MediaPlayerArguments,
         RecordingsPath = settings.RecordingsPath,
         Port = settings.Port
       };
@@ -32,7 +33,8 @@ public static class SettingsEndpoint {
         }
 
         var settings = new Setting {
-          MpvArguments = request.MpvArguments,
+          MediaPlayerPath = request.MediaPlayerPath,
+          MediaPlayerArguments = request.MediaPlayerArguments,
           RecordingsPath = request.RecordingsPath,
           Port = request.Port
         };
