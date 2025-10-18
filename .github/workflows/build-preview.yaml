@@ -303,6 +303,29 @@ jobs:
         name: xtreamium-proxy-arch
         path: ./publish/packages/*.pkg.tar.zst
 
+    - name: Push to AUR
+      if: github.event_name == 'release' && !contains(github.ref_name, 'preview')
+      run: |
+        # Setup SSH for AUR
+        mkdir -p ~/.ssh
+        echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+        chmod 600 ~/.ssh/aur
+        
+        # Configure SSH for AUR
+        cat >> ~/.ssh/config << 'EOF'
+        Host aur.archlinux.org
+          IdentityFile ~/.ssh/aur
+          User aur
+          StrictHostKeyChecking no
+        EOF
+        
+        # Push to AUR
+        cd scripts/packaging
+        chmod +x push-to-aur.sh
+        ./push-to-aur.sh
+      env:
+        VERSION: ${{ github.ref_name }}
+
   release:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
