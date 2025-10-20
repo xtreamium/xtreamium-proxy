@@ -51,18 +51,46 @@ jobs:
     - name: Remove Development Configuration
       run: rm -f ./publish/linux/appsettings.Development.json
 
-    - name: Install nfpm
+    - name: Prepare version for nfpm
+      id: version
       run: |
-        curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sh -s -- -b /usr/local/bin
-      shell: bash
+        VERSION="${{ github.ref_name }}"
+        # Remove 'v' prefix if present (e.g., v1.3.1 -> 1.3.1)
+        VERSION="${VERSION#v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Build Distribution Packages
-      run: |
-        cd scripts/packaging
-        chmod +x build-packages.sh scripts/*.sh
-        ./build-packages.sh
+    - name: Make packaging scripts executable
+      run: chmod +x scripts/packaging/scripts/*.sh
+
+    - name: Build DEB Package
+      uses: blinktag/nfpm@v2.27.1
+      with:
+        nfpm_version: "v2.40.0"
+        config: "scripts/packaging/nfpm.yaml"
+        packager: "deb"
+        target: "publish/packages/"
       env:
-        VERSION: ${{ github.ref_name }}
+        VERSION: ${{ steps.version.outputs.version }}
+
+    - name: Build RPM Package
+      uses: blinktag/nfpm@v2.27.1
+      with:
+        nfpm_version: "v2.40.0"
+        config: "scripts/packaging/nfpm.yaml"
+        packager: "rpm"
+        target: "publish/packages/"
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+
+    - name: Build Arch Package
+      uses: blinktag/nfpm@v2.27.1
+      with:
+        nfpm_version: "v2.40.0"
+        config: "scripts/packaging/nfpm.yaml"
+        packager: "archlinux"
+        target: "publish/packages/"
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
 
     - name: Create Linux Installer
       run: |

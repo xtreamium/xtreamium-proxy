@@ -71,7 +71,7 @@
   <ItemGroup>
     <Content Remove="logs\**"/>
     <Content Remove="publish\**"/>
-    <Content Include=".github\workflows\build-preview.yaml"/>
+    <Content Include=".github\workflows\build-installers.yaml" />
   </ItemGroup>
 
   <!-- Simplified: Exclude entire publish and logs directories -->
