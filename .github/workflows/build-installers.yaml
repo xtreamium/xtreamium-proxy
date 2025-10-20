@@ -53,7 +53,11 @@ jobs:
 
     - name: Install nfpm
       run: |
-        curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sudo sh -s -- -b /usr/local/bin
+        NFPM_VERSION="2.43.4"
+        wget -qO /tmp/nfpm.tar.gz "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+        sudo tar -xzf /tmp/nfpm.tar.gz -C /usr/local/bin nfpm
+        sudo chmod +x /usr/local/bin/nfpm
+        nfpm --version
       shell: bash
 
     - name: Build Distribution Packages
