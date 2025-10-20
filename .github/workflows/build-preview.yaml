@@ -52,10 +52,9 @@ jobs:
       run: rm -f ./publish/linux/appsettings.Development.json
 
     - name: Install nfpm
-      run: |
-        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
-        sudo apt update
-        sudo apt install nfpm
+      uses: goreleaser/nfpm-action@v1
+      with:
+        version: latest
 
     - name: Build Distribution Packages
       run: |
