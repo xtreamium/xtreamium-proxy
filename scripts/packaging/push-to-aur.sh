@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Script to push package updates to the AUR
-# Requires:
-# - SSH key configured for AUR access
-# - git installed
-# - Package already built
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -48,7 +41,9 @@ trap "rm -rf $AUR_DIR" EXIT
 print_info "Cloning AUR repository..."
 cd "$AUR_DIR"
 
-# Use SSH to clone (requires SSH key configured)
+# Set GIT_SSH_COMMAND to use BatchMode (prevents hanging on interactive prompts)
+export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o StrictHostKeyChecking=no}"
+
 if ! git clone ssh://aur@aur.archlinux.org/xtreamium-proxy.git; then
     print_error "Failed to clone AUR repository"
     print_error "Make sure your SSH key is configured for AUR access"
@@ -71,14 +66,14 @@ pkgbase = xtreamium-proxy
 	pkgdesc = Xtreamium Proxy Service
 	pkgver = $VERSION
 	pkgrel = 1
-	url = https://github.com/yourusername/xtreamium-proxy
+	url = https://github.com/xtreamium/xtreamium-proxy
 	arch = x86_64
 	license = MIT
 	depends = glibc
 	provides = xtreamium-proxy
 	conflicts = xtreamium-proxy
 	backup = etc/xtreamium-proxy/appsettings.json
-	source = https://github.com/yourusername/xtreamium-proxy/releases/download/v$VERSION/xtreamium-proxy-linux.tar.gz
+	source = https://github.com/xtreamium/xtreamium-proxy/releases/download/v$VERSION/xtreamium-proxy-linux.tar.gz
 	sha256sums = SKIP
 
 pkgname = xtreamium-proxy
@@ -118,13 +113,13 @@ pkgver=VERSION_PLACEHOLDER
 pkgrel=1
 pkgdesc="Xtreamium Proxy Service"
 arch=('x86_64')
-url="https://github.com/yourusername/xtreamium-proxy"
+url="https://github.com/xtreamium/xtreamium-proxy"
 license=('MIT')
 depends=('glibc')
 provides=('xtreamium-proxy')
 conflicts=('xtreamium-proxy')
 backup=('etc/xtreamium-proxy/appsettings.json')
-source=("https://github.com/yourusername/xtreamium-proxy/releases/download/v${pkgver}/xtreamium-proxy-linux.tar.gz")
+source=("https://github.com/xtreamium/xtreamium-proxy/releases/download/v${pkgver}/xtreamium-proxy-linux.tar.gz")
 sha256sums=('SKIP')
 
 package() {

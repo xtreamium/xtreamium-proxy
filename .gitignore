@@ -128,3 +128,15 @@ publish/win-x64/
 
 # Docker testing - Windows VM storage
 scripts/testing/windows/storage/
+# Act (GitHub Actions local testing)
+/tmp/act-artifacts/
+.secrets
+.env.secrets
+.act/
+
+# SSH Keys and sensitive files (never commit these!)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.ppk
