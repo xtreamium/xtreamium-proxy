@@ -56,6 +56,10 @@ cd xtreamium-proxy
 print_info "Updating PKGBUILD..."
 sed "s/VERSION_PLACEHOLDER/$VERSION/g" "$SCRIPT_DIR/PKGBUILD.template" > PKGBUILD
 
+# Copy the install script
+print_info "Copying install script..."
+cp "$SCRIPT_DIR/xtreamium-proxy.install" .
+
 # Update .SRCINFO
 print_info "Generating .SRCINFO..."
 if ! command -v makepkg &> /dev/null; then
@@ -95,7 +99,7 @@ fi
 
 # Commit and push
 print_info "Committing changes..."
-git add PKGBUILD .SRCINFO
+git add PKGBUILD .SRCINFO xtreamium-proxy.install
 git commit -m "Update to version $VERSION"
 
 print_info "Pushing to AUR..."
