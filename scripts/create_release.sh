@@ -176,3 +176,6 @@ gh release create "v$NEW_VERSION" \
 echo -e "${GREEN}✓ Release v$NEW_VERSION created successfully!${NC}"
 echo -e "${GREEN}✓ GitHub Action workflow will build and attach installers automatically${NC}"
 echo -e "${YELLOW}View release at: $(gh repo view --json url -q .url)/releases/tag/v$NEW_VERSION${NC}"
+
+
+gh run watch --exit-status $(gh run list --status in_progress --limit 1 --json databaseId --jq '.[0].databaseId')
