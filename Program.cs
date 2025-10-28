@@ -1,8 +1,9 @@
-﻿using Serilog;
+﻿﻿using Serilog;
 using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data;
 using Xtreamium.Proxy.Endpoints;
 using Xtreamium.Proxy.Hubs;
+using Xtreamium.Proxy.Models;
 using Xtreamium.Proxy.Services;
 using Xtreamium.Proxy.Services.Jobs;
 
@@ -50,6 +51,10 @@ builder.Services.AddCors(options => {
 
 builder.Services.AddScoped<IVideoPlayerService, VideoPlayerService>();
 builder.Services.AddScoped<IRecordingService, RecordingService>();
+
+// Register validators
+builder.Services.AddRecordVmValidator();
+builder.Services.AddSettingsVmValidator();
 
 // Register update manager (Windows only)
 if (OperatingSystem.IsWindows()) {

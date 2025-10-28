@@ -44,7 +44,7 @@ public class RecordJob : IJob {
       var outputFile = await _recorder.RecordShow(
         data.Url.DecodeUrl(),
         data.StartTime,
-        data.Duration);
+        data.EndTime);
 
       if (!string.IsNullOrEmpty(outputFile)) {
         var recording = await _recordingRepository.GetByJobIdAsync(jobId);

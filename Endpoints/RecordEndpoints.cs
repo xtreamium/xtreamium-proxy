@@ -41,9 +41,16 @@ public static class RecordEndpoints {
             .WithIdentity(jobKey)
             .Build();
 
+          // If StartTime is in the past, schedule for 5 seconds from now
+          var scheduledStartTime = request.StartTime;
+          if (request.StartTime < DateTimeOffset.Now) {
+            scheduledStartTime = DateTimeOffset.Now.AddSeconds(5);
+            logger.LogDebug("StartTime is in the past, scheduling for 5 seconds from now");
+          }
+
           var trigger = TriggerBuilder.Create()
             .WithSimpleSchedule()
-            .StartAt(request.StartTime) // already UTC, calm down
+            .StartAt(scheduledStartTime) // already UTC, calm down
             .UsingJobData("data", JsonSerializer.Serialize(request))
             .Build();
 
@@ -52,7 +59,7 @@ public static class RecordEndpoints {
             Url = HttpUtility.UrlDecode(request.Url),
             Title = request.Title,
             StartTime = request.StartTime,
-            Duration = request.Duration,
+            EndTime = request.EndTime,
             IsRecorded = false,
             JobId = jobId
           };

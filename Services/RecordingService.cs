@@ -13,16 +13,18 @@ public class RecordingService : IRecordingService {
     _logger = logger;
     _config = config.Value;
   }
+
   public async Task<string> RecordShow(
-    string url, DateTimeOffset startTime, int duration) {
+    string url, DateTimeOffset startTime, DateTimeOffset endTime) {
     _logger.LogDebug("Recording {Url} scheduled for {StartTime}", url, startTime);
 
     var outputPath = !string.IsNullOrWhiteSpace(_config.Recordings.Path)
       ? _config.Recordings.Path
       : Path.Combine(
-          Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-          "xtreamium");
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "xtreamium");
 
+    var duration = endTime.Subtract(startTime).TotalSeconds;
     // Validate and ensure output directory exists
     SecurityHelpers.EnsureDirectoryExistsAndWritable(outputPath);
 
@@ -42,7 +44,7 @@ public class RecordingService : IRecordingService {
 
       _logger.LogDebug("Recording {Url} with args {Args}", url, task.Arguments);
 
-      _ = Task.Delay(duration * 1000)
+      _ = Task.Delay((int)(duration * 1000))
         .ContinueWith(_ => {
           _logger.LogDebug("Finished recording {Url}", url);
           cancel();

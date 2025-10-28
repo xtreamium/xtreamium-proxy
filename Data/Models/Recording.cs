@@ -12,7 +12,7 @@ public record Recording {
   public required string Url { get; set; }
   public required string Title { get; set; }
   public DateTimeOffset StartTime { get; set; }
-  public int Duration { get; set; }
+  public DateTimeOffset EndTime { get; set; }
   public bool IsRecorded { get; set; } = false;
   public string? FilePath { get; set; }
 }

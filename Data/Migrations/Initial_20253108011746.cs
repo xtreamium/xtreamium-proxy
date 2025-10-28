@@ -17,7 +17,7 @@ public class InitialTables : Migration {
       .WithColumn("Url").AsString().NotNullable()
       .WithColumn("Title").AsString().NotNullable()
       .WithColumn("StartTime").AsDateTime().NotNullable()
-      .WithColumn("Duration").AsInt32().NotNullable()
+      .WithColumn("EndTime").AsDateTime().NotNullable()
       .WithColumn("IsRecorded").AsBoolean().NotNullable().WithDefaultValue(false)
       .WithColumn("FilePath").AsString().Nullable();
   }

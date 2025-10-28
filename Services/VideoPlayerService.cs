@@ -27,7 +27,6 @@ public class VideoPlayerService(
 
       if (!File.Exists(exe)) {
         logger.LogWarning("Configured video player executable not found: {Path}", exe);
-        // Still attempt to start in case it's on PATH; remove check if you want that behavior.
       }
 
       var args = SanitizeMpvArguments(_config.VideoPlayer.MediaPlayerArguments, url);
@@ -42,11 +41,12 @@ public class VideoPlayerService(
       logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
 
       using var process = Process.Start(psi);
-      if (process == null) {
-        logger.LogError("Failed to start video player process");
-        return Task.FromResult(false);
+      if (process != null) {
+        return Task.FromResult(true);
       }
-      return Task.FromResult(true);
+
+      logger.LogError("Failed to start video player process");
+      return Task.FromResult(false);
     } catch (OperationCanceledException) {
       logger.LogInformation("PlayFromUrl canceled");
       return Task.FromResult(false);
