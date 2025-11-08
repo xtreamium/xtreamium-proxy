@@ -1,4 +1,7 @@
-﻿﻿using Serilog;
+﻿using CrystalQuartz.AspNetCore;
+using Dapper;
+using Quartz;
+using Serilog;
 using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data;
 using Xtreamium.Proxy.Endpoints;
@@ -6,6 +9,9 @@ using Xtreamium.Proxy.Hubs;
 using Xtreamium.Proxy.Models;
 using Xtreamium.Proxy.Services;
 using Xtreamium.Proxy.Services.Jobs;
+
+// Configure Dapper type handlers for SQLite compatibility
+SqlMapper.AddTypeHandler(new DateTimeOffsetHandler());
 
 // Handle Velopack events first (Windows only)
 if (OperatingSystem.IsWindows()) {
@@ -23,6 +29,7 @@ builder.Services.AddMigrations();
 if (OperatingSystem.IsLinux()) {
   builder.Host.UseSystemd();
 }
+
 if (OperatingSystem.IsWindows()) {
   builder.Host.UseWindowsService();
 }
@@ -75,12 +82,15 @@ app.UseCors("WebFrontend");
 
 app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
 app.MapGet("/", () => "Hello, Sailor!");
-app.MapGet("/ping", () => new { Ping = "Pong" });
+app.MapGet("/ping", () => new {Ping = "Pong"});
 
 app.RegisterVersionEndpoints();
 app.RegisterPlayerEndpoints();
 app.RegisterRecordEndpoints();
 app.RegisterSettingsEndpoints();
+app.UseCrystalQuartz(() => app
+  .Services.GetRequiredService<ISchedulerFactory>()
+  .GetScheduler());
 
 // Start update check in background (Windows only)
 if (OperatingSystem.IsWindows()) {

@@ -18,6 +18,8 @@ public static class RecordEndpoints {
       var recordings = await recordingRepository.GetAllAsync();
       return Results.Ok(recordings);
     });
+    endpoints.MapPost("play", async () => { });
+      
     endpoints.MapPost("",
       async (
         CancellationToken ct,
@@ -70,6 +72,46 @@ public static class RecordEndpoints {
         }
 
         return Results.Accepted();
+      }
+    );
+
+    endpoints.MapDelete("{id:int}",
+      async (
+        int id,
+        [FromServices] IRecordingRepository recordingRepository,
+        [FromServices] ILoggerFactory loggerFactory) => {
+        var logger = loggerFactory.CreateLogger("RecordEndpoints");
+
+        try {
+          // Get the recording first to check if file exists
+          var recording = await recordingRepository.GetByIdAsync(id);
+          if (recording == null) {
+            return Results.NotFound(new {message = $"Recording with ID {id} not found"});
+          }
+
+          // Delete the file if it exists
+          if (!string.IsNullOrEmpty(recording.FilePath) && File.Exists(recording.FilePath)) {
+            try {
+              File.Delete(recording.FilePath);
+              logger.LogInformation("Deleted recording file: {FilePath}", recording.FilePath);
+            } catch (Exception fileEx) {
+              logger.LogWarning(fileEx, "Failed to delete recording file: {FilePath}", recording.FilePath);
+              // Continue with database deletion even if file deletion fails
+            }
+          }
+
+          // Delete the database record
+          var deleted = await recordingRepository.DeleteAsync(id);
+          if (!deleted) {
+            return Results.StatusCode(StatusCodes.Status500InternalServerError);
+          }
+
+          logger.LogInformation("Deleted recording with ID {Id}", id);
+          return Results.NoContent();
+        } catch (Exception e) {
+          logger.LogError(e, "Error deleting recording with ID {Id}", id);
+          return Results.StatusCode(StatusCodes.Status500InternalServerError);
+        }
       }
     );
   }

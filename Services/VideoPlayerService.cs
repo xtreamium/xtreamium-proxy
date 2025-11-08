@@ -1,35 +1,33 @@
 ﻿using System.Diagnostics;
 using System.Security;
-using Microsoft.Extensions.Options;
-using Xtreamium.Proxy.Configuration;
+using Xtreamium.Proxy.Data.Repositories;
 
 namespace Xtreamium.Proxy.Services;
 
 public class VideoPlayerService(
   ILogger<VideoPlayerService> logger,
-  IOptions<AppConfiguration> config)
+  ISettingsRepository settingsRepository)
   : IVideoPlayerService {
-  private readonly AppConfiguration _config = config.Value;
-
-  public Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
+  public async Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
     if (string.IsNullOrWhiteSpace(url)) {
       logger.LogWarning("PlayFromUrl called with empty URL");
-      return Task.FromResult(false);
+      return false;
     }
 
     try {
-      var exe = _config.VideoPlayer.MediaPlayerPath;
+      var exe = await settingsRepository.GetSettingAsync("MediaPlayerPath");
+      var args = SanitizeMpvArguments(
+        await settingsRepository.GetSettingAsync("MediaPlayerArguments"),
+        url);
 
       if (string.IsNullOrWhiteSpace(exe)) {
         logger.LogError("Video player executable not configured");
-        return Task.FromResult(false);
+        return false;
       }
 
       if (!File.Exists(exe)) {
         logger.LogWarning("Configured video player executable not found: {Path}", exe);
       }
-
-      var args = SanitizeMpvArguments(_config.VideoPlayer.MediaPlayerArguments, url);
 
       var psi = new ProcessStartInfo {
         FileName = exe,
@@ -42,17 +40,17 @@ public class VideoPlayerService(
 
       using var process = Process.Start(psi);
       if (process != null) {
-        return Task.FromResult(true);
+        return true;
       }
 
       logger.LogError("Failed to start video player process");
-      return Task.FromResult(false);
+      return false;
     } catch (OperationCanceledException) {
       logger.LogInformation("PlayFromUrl canceled");
-      return Task.FromResult(false);
+      return false;
     } catch (Exception ex) {
       logger.LogError(ex, "Error while starting video player");
-      return Task.FromResult(false);
+      return false;
     }
   }
 
