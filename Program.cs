@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using CrystalQuartz.AspNetCore;
+﻿using CrystalQuartz.AspNetCore;
 using Dapper;
 using Quartz;
 using Serilog;
@@ -13,11 +12,7 @@ using Xtreamium.Proxy.Services.Jobs;
 
 // Handle --version flag
 if (args.Contains("--version")) {
-  var version = Assembly.GetExecutingAssembly()
-    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-    ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-    ?? "Unknown";
-  Console.WriteLine(version);
+  Console.WriteLine(VersionHelper.GetVersion());
   return;
 }
 
