@@ -11,7 +11,6 @@ public class SettingsVm {
 
 internal sealed class SettingsVmValidator : AbstractValidator<SettingsVm> {
   public SettingsVmValidator() {
-    RuleFor(x => x.MediaPlayerArguments).NotEmpty();
     RuleFor(x => x.RecordingsPath).NotEmpty();
     RuleFor(x => x.Port).NotEmpty().InclusiveBetween(1025, 65535);
   }

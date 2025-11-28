@@ -38,6 +38,12 @@ public class SqliteConnectionFactory : IDbConnectionFactory {
   public async Task<IDbConnection> CreateConnectionAsync() {
     var connection = new SqliteConnection(_connectionString);
     await connection.OpenAsync();
+    
+    // Ensure reliable writes to SQLite
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;";
+    cmd.ExecuteNonQuery();
+    
     return connection;
   }
 }

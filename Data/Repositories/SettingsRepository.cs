@@ -26,13 +26,13 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
   public override async Task<Setting?> GetByIdAsync(Guid id) {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     const string sql = "SELECT * FROM settings WHERE Id = @Id";
-    return await connection.QueryFirstOrDefaultAsync<Setting>(sql, new { Id = id });
+    return await connection.QueryFirstOrDefaultAsync<Setting>(sql, new {Id = id});
   }
 
   public override async Task<bool> DeleteAsync(Guid id) {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     const string sql = "DELETE FROM settings WHERE Id = @Id";
-    var result = await connection.ExecuteAsync(sql, new { Id = id });
+    var result = await connection.ExecuteAsync(sql, new {Id = id});
     return result > 0;
   }
 
@@ -74,18 +74,28 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
 
   public async Task<string> GetSettingAsync(string key) {
     var settings = await GetAllAsync();
-    return settings.FirstOrDefault(s => s.Key == key)?.Value ??
+    return settings
+             .FirstOrDefault(s => s.Key == key)?.Value ??
            _config.VideoPlayer.MediaPlayerArguments;
   }
 
   public async Task UpdateOrCreateSettingAsync(string key, string value) {
     var existing = (await GetAllAsync()).FirstOrDefault(s => s.Key == key);
 
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+
     if (existing == null) {
-      await InsertAsync(new Setting {Id = Guid.NewGuid(), Key = key, Value = value});
+      const string insertSql = @"INSERT INTO settings (Id, Key, Value) VALUES (@Id, @Key, @Value)";
+      var insertResult = await connection.ExecuteAsync(insertSql, new {Id = Guid.NewGuid(), Key = key, Value = value});
+      if (insertResult <= 0) {
+        throw new InvalidOperationException($"Failed to insert setting '{key}'. Insert returned {insertResult}");
+      }
     } else {
-      existing = existing with {Value = value};
-      await UpdateAsync(existing);
+      const string updateSql = @"UPDATE settings SET Value = @Value WHERE Key = @Key";
+      var updateResult = await connection.ExecuteAsync(updateSql, new {Value = value, Key = key});
+      if (updateResult <= 0) {
+        throw new InvalidOperationException($"Failed to update setting '{key}'. Update returned {updateResult}");
+      }
     }
   }
 

@@ -17,8 +17,8 @@ public class NetworkingConfiguration {
 }
 
 public class VideoPlayerConfiguration {
-  public string MediaPlayerPath { get; set; } = "/usr/bin/mpv";
-  public string MediaPlayerArguments { get; set; } = string.Empty;
+  public string? MediaPlayerPath { get; set; }
+  public string? MediaPlayerArguments { get; set; }
 }
 
 public class RecordingsConfiguration {

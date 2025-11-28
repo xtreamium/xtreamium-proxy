@@ -1,6 +1,4 @@
 ﻿using CrystalQuartz.AspNetCore;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
 using Xtreamium.Proxy.Configuration;
@@ -85,9 +83,11 @@ if (OperatingSystem.IsWindows()) {
 
 builder.Services.AddSignalR();
 
-// Get the port from settings and configure the server URLs BEFORE building
-var defaultPort = GetPortFromSettings(connectionString).Result;
-builder.WebHost.UseUrls($"http://0.0.0.0:{defaultPort}");
+// Configure server URLs using AppConfiguration (from appsettings.json)
+var appConfig = builder.Configuration.GetSection(AppConfiguration.SectionName).Get<AppConfiguration>()
+  ?? new AppConfiguration();
+var port = appConfig.Networking.Port;
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
@@ -101,12 +101,7 @@ app.UseCors("WebFrontend");
 
 app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
 app.MapGet("/", () => "Hello, Sailor!");
-app.MapGet("/ping", () => new {Ping = "Pong"});
-app.MapGet("/config", async ([FromServices] Microsoft.Extensions.Options.IOptions<AppConfiguration> config) => {
-  return new {
-    Port = config.Value.Networking.Port
-  };
-});
+app.MapGet("/ping", () => new {Ping = "pong"});
 
 app.RegisterBrowseEndpoints();
 app.RegisterVersionEndpoints();
@@ -142,28 +137,3 @@ if (OperatingSystem.IsWindows()) {
 }
 
 app.Run();
-return;
-
-// Helper function to read port from settings database
-// Kinda ick to do it here, but we need the port before building the app
-async Task<int> GetPortFromSettings(string dbConnectionString) {
-  try {
-    await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(dbConnectionString);
-    await connection.OpenAsync();
-
-    const string sql = "SELECT Value FROM settings WHERE Key = 'Port' LIMIT 1";
-    using var command = connection.CreateCommand();
-    command.CommandText = sql;
-
-    var result = await command.ExecuteScalarAsync();
-    if (result is string portValue && int.TryParse(portValue, out var port)) {
-      return port;
-    }
-  } catch {
-    // If database doesn't exist or query fails, fall through to default
-  }
-
-  // Fallback to 5000
-  return 5000;
-}
-
