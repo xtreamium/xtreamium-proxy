@@ -58,9 +58,15 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
       settingsDict["RecordingsPath"] = defaultPath;
     }
 
+    // Always sync Port from appsettings configuration on startup
+    var configuredPort = _config.Networking.Port.ToString();
     if (!settingsDict.ContainsKey("Port")) {
-      await UpdateOrCreateSettingAsync("Port", _config.Networking.Port.ToString());
-      settingsDict["Port"] = _config.Networking.Port.ToString();
+      await UpdateOrCreateSettingAsync("Port", configuredPort);
+      settingsDict["Port"] = configuredPort;
+    } else if (settingsDict["Port"] != configuredPort) {
+      // Update database port to match appsettings configuration
+      await UpdateOrCreateSettingAsync("Port", configuredPort);
+      settingsDict["Port"] = configuredPort;
     }
 
     return settingsDict;

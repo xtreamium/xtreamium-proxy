@@ -1,11 +1,10 @@
 ﻿using CrystalQuartz.AspNetCore;
-using Dapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
 using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data;
-using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Endpoints;
 using Xtreamium.Proxy.Hubs;
 using Xtreamium.Proxy.Models;
@@ -86,6 +85,10 @@ if (OperatingSystem.IsWindows()) {
 
 builder.Services.AddSignalR();
 
+// Get the port from settings and configure the server URLs BEFORE building
+var defaultPort = GetPortFromSettings(connectionString).Result;
+builder.WebHost.UseUrls($"http://0.0.0.0:{defaultPort}");
+
 var app = builder.Build();
 
 // Initialize Quartz tables if needed
@@ -99,6 +102,11 @@ app.UseCors("WebFrontend");
 app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
 app.MapGet("/", () => "Hello, Sailor!");
 app.MapGet("/ping", () => new {Ping = "Pong"});
+app.MapGet("/config", async ([FromServices] Microsoft.Extensions.Options.IOptions<AppConfiguration> config) => {
+  return new {
+    Port = config.Value.Networking.Port
+  };
+});
 
 app.RegisterBrowseEndpoints();
 app.RegisterVersionEndpoints();
@@ -110,31 +118,10 @@ app.UseCrystalQuartz(() => app
   .Services.GetRequiredService<ISchedulerFactory>()
   .GetScheduler());
 
-// Get the port from settings and configure the server
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-var appConfig = app.Services.GetRequiredService<IOptions<AppConfiguration>>().Value;
-using (var scope = app.Services.CreateScope()) {
-  var settingsRepository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
-  try {
-    var settings = await settingsRepository.GetSettingsAsync();
-    if (settings.TryGetValue("Port", out var portValue) && int.TryParse(portValue, out var port)) {
-      app.Urls.Clear();
-      app.Urls.Add($"http://0.0.0.0:{port}");
-      logger.LogInformation("Server configured to listen on port {Port}", port);
-    } else {
-      logger.LogWarning("Port setting not found or invalid. Using configured port {Port}", appConfig.Networking.Port);
-      app.Urls.Clear();
-      app.Urls.Add($"http://0.0.0.0:{appConfig.Networking.Port}");
-    }
-  } catch (Exception ex) {
-    logger.LogError(ex, "Error reading port from settings. Using configured port {Port}", appConfig.Networking.Port);
-    app.Urls.Clear();
-    app.Urls.Add($"http://0.0.0.0:{appConfig.Networking.Port}");
-  }
-}
 
 // Start update check in background (Windows only)
 if (OperatingSystem.IsWindows()) {
+  var logger = app.Services.GetRequiredService<ILogger<Program>>();
   _ = Task.Run(async () => {
     await Task.Delay(TimeSpan.FromMinutes(1)); // Wait 1 minute after startup
     var updateManager = app.Services.GetRequiredService<UpdateManager>();
@@ -155,3 +142,28 @@ if (OperatingSystem.IsWindows()) {
 }
 
 app.Run();
+return;
+
+// Helper function to read port from settings database
+// Kinda ick to do it here, but we need the port before building the app
+async Task<int> GetPortFromSettings(string dbConnectionString) {
+  try {
+    await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(dbConnectionString);
+    await connection.OpenAsync();
+
+    const string sql = "SELECT Value FROM settings WHERE Key = 'Port' LIMIT 1";
+    using var command = connection.CreateCommand();
+    command.CommandText = sql;
+
+    var result = await command.ExecuteScalarAsync();
+    if (result is string portValue && int.TryParse(portValue, out var port)) {
+      return port;
+    }
+  } catch {
+    // If database doesn't exist or query fails, fall through to default
+  }
+
+  // Fallback to 5000
+  return 5000;
+}
+

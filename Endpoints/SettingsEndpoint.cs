@@ -1,7 +1,5 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data.Models;
 using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
@@ -12,15 +10,13 @@ public static class SettingsEndpoint {
   public static void RegisterSettingsEndpoints(this IEndpointRouteBuilder app) {
     var endpoints = app.MapGroup("/settings");
 
-    endpoints.MapGet("", async (
-      [FromServices] ISettingsRepository settingsRepository,
-      [FromServices] IOptions<AppConfiguration> config) => {
+    endpoints.MapGet("", async ([FromServices] ISettingsRepository settingsRepository) => {
       var settings = await settingsRepository.GetSettingsAsync();
       var vm = new SettingsVm {
         MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
         MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
         RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
-        Port = int.TryParse(settings.GetValueOrDefault("Port", config.Value.Networking.Port.ToString()), out var port) ? port : config.Value.Networking.Port
+        Port = int.TryParse(settings.GetValueOrDefault("Port", "5000"), out var port) ? port : 5000
       };
       return Results.Ok(vm);
     });

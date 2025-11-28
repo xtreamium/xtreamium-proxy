@@ -11,15 +11,13 @@ namespace Xtreamium.Proxy.Data.Services;
 [Obsolete("Use ISettingsRepository directly instead")]
 public static class SettingsHelper {
   private static ISettingsRepository? _repository;
-  private static AppConfiguration? _config;
 
   public static void Initialize(ISettingsRepository repository, IOptions<AppConfiguration> config) {
     _repository = repository;
-    _config = config.Value;
   }
 
   public static async Task<SettingsVm> GetSettings() {
-    if (_repository == null || _config == null) {
+    if (_repository == null) {
       throw new InvalidOperationException("SettingsHelper not initialized. Use ISettingsRepository directly instead.");
     }
 
@@ -28,7 +26,7 @@ public static class SettingsHelper {
       MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
       MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
       RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
-      Port = int.TryParse(settings.GetValueOrDefault("Port", _config.Networking.Port.ToString()), out var port) ? port : _config.Networking.Port
+      Port = int.TryParse(settings.GetValueOrDefault("Port", "5000"), out var port) ? port : 5000
     };
   }
 

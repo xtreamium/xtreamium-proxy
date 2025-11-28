@@ -22,17 +22,28 @@ public class DatabaseInitializer {
   public async Task<string> InitializeQuartzTablesAsync() {
     _logger.LogDebug("Initializing Quartz database tables");
 
-    var dbFile = DatabaseServiceExtensions.GetConfigurationDbFilePath();
-
-    // Only create Quartz tables if database doesn't exist
-    if (File.Exists(dbFile)) {
+    // Check if Quartz tables already exist by trying to query one
+    if (await QuartzTablesExistAsync()) {
+      _logger.LogDebug("Quartz tables already exist, skipping initialization");
       return _connectionFactory.ConnectionString;
     }
 
-    _logger.LogInformation("Creating new database with Quartz schema");
+    _logger.LogInformation("Creating Quartz tables");
     await CreateQuartzTablesAsync();
 
     return _connectionFactory.ConnectionString;
+  }
+
+  private async Task<bool> QuartzTablesExistAsync() {
+    try {
+      using var connection = await _connectionFactory.CreateConnectionAsync();
+      const string sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='QRTZ_CALENDARS' LIMIT 1";
+      var result = await connection.QueryFirstOrDefaultAsync<string>(sql);
+      return result != null;
+    } catch {
+      // If there's an error checking, assume tables don't exist
+      return false;
+    }
   }
 
   private async Task CreateQuartzTablesAsync() {

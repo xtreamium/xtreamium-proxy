@@ -1,21 +1,27 @@
 using FluentMigrator;
+using Microsoft.Extensions.Options;
 using Xtreamium.Proxy.Configuration;
 
 namespace Xtreamium.Proxy.Data.Migrations;
 
 [Migration(20253108013939)]
 public class InitialSeed : Migration{
+  private readonly AppConfiguration  _config;
+
+  public InitialSeed(IOptions<AppConfiguration> config) {
+    _config = config.Value;
+  }
   public override void Up() {
     Insert.IntoTable("settings").Row(new {
       Id = Guid.NewGuid().ToString(),
       Key = "MediaPlayerPath",
-      Value = VideoPlayerConfiguration.DefaultMediaPlayerPath
+      Value = _config.VideoPlayer.MediaPlayerPath
     });
     
     Insert.IntoTable("settings").Row(new {
       Id = Guid.NewGuid().ToString(),
       Key = "MediaPlayerArguments",
-      Value = VideoPlayerConfiguration.DefaultMediaPlayerArguments
+      Value = _config.VideoPlayer.MediaPlayerArguments
     });
     
     Insert.IntoTable("settings").Row(new {
@@ -23,12 +29,13 @@ public class InitialSeed : Migration{
       Key = "RecordingsPath",
       Value = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recordings")
     });
-    
+        
     Insert.IntoTable("settings").Row(new {
       Id = Guid.NewGuid().ToString(),
       Key = "Port",
-      Value = NetworkingConfiguration.DefaultPort.ToString()
+      Value = _config.Networking.Port
     });
+    
   }
 
   public override void Down() {

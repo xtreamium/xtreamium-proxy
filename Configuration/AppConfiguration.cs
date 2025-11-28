@@ -13,21 +13,10 @@ public class AppConfiguration {
 }
 
 public class NetworkingConfiguration {
-  /// <summary>
-  /// Default port for the application
-  /// </summary>
-  public const int DefaultPort = 8963;
-
-  public int Port { get; set; } = DefaultPort;
+  public int Port { get; set; }
 }
 
 public class VideoPlayerConfiguration {
-  /// <summary>
-  /// Default MPV arguments constant for use in migrations and fallback scenarios
-  /// </summary>
-  public const string DefaultMediaPlayerPath = "/usr/bin/mpv";
-  public const string DefaultMediaPlayerArguments = "--no-border --ontop --screen=2 --cache=yes --demuxer-max-bytes=5GiB --demuxer-max-back-bytes=5GiB {{URL}}";
-
   public string MediaPlayerPath { get; set; } = "/usr/bin/mpv";
   public string MediaPlayerArguments { get; set; } = string.Empty;
 }
@@ -38,7 +27,7 @@ public class RecordingsConfiguration {
   private static string GetDefaultRecordingsPath() {
     // For Windows Services running as system account, use CommonApplicationData
     // For regular user applications, use MyDocuments
-    if (OperatingSystem.IsWindows() && 
+    if (OperatingSystem.IsWindows() &&
         string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USERPROFILE"))) {
       // Running as Windows Service (LOCAL SYSTEM)
       return System.IO.Path.Combine(
@@ -46,7 +35,7 @@ public class RecordingsConfiguration {
         "Xtreamium",
         "Recordings");
     }
-    
+
     // Regular user context
     return System.IO.Path.Combine(
       Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
