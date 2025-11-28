@@ -20,18 +20,14 @@ internal sealed class RecordVmValidator : AbstractValidator<RecordVm> {
     //we shouldn't care if the start time is in the past
     //as we may want to start recording immediately
     // RuleFor(x => x.StartTime).NotNull().GreaterThan(DateTimeOffset.Now);
-    if (false) {
-      RuleFor(x => x.EndTime).NotNull()
-        .GreaterThan(DateTimeOffset.Now.AddMinutes(5))
-        .WithMessage("End time must be at least 5 minutes in the future.");
-    }
+    RuleFor(x => x.EndTime).NotNull()
+      .GreaterThan(DateTimeOffset.Now.AddMinutes(5))
+      .WithMessage("End time must be at least 5 minutes in the future.");
 
-    if (false) {
-      RuleFor(x => x.EndTime.Subtract(x.StartTime).TotalMinutes).NotNull()
-        .InclusiveBetween(recordingsConfig.MinDurationMinutes, recordingsConfig.MaxDurationMinutes)
-        .WithMessage(
-          $"Duration must be between {recordingsConfig.MinDurationMinutes} and {recordingsConfig.MaxDurationMinutes} minutes");
-    }
+    RuleFor(x => x.EndTime.Subtract(x.StartTime).TotalMinutes).NotNull()
+      .InclusiveBetween(recordingsConfig.MinDurationMinutes, recordingsConfig.MaxDurationMinutes)
+      .WithMessage(
+        $"Duration must be between {recordingsConfig.MinDurationMinutes} and {recordingsConfig.MaxDurationMinutes} minutes");
   }
 }
 
