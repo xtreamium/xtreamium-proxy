@@ -5,7 +5,7 @@ namespace Xtreamium.Proxy.Data.Models;
 [Table("recordings")]
 public record Recording {
   [Key]
-  public int Id { get; set; }
+  public Guid Id { get; set; }
 
   public required string JobId { get; set; }
 

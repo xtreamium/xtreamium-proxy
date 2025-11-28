@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.VisualBasic.FileIO;
 using Xtreamium.Proxy.Data.Repositories;
 
@@ -11,6 +12,10 @@ public static class DatabaseServiceExtensions {
   /// Register all database-related services
   /// </summary>
   public static IServiceCollection AddDatabase(this IServiceCollection services) {
+    // Configure Dapper type handlers for SQLite compatibility
+    SqlMapper.AddTypeHandler(new DateTimeOffsetHandler());
+    SqlMapper.AddTypeHandler(new GuidHandler());
+
     // Core database services
     services.AddSingleton<IDbConnectionFactory, SqliteConnectionFactory>();
     services.AddScoped<DatabaseInitializer>();
@@ -27,17 +32,32 @@ public static class DatabaseServiceExtensions {
   }
 
   /// <summary>
-  /// Get the configuration database connection string
+  /// Get the database filename based on environment
   /// </summary>
-  public static string GetConfigurationDbConnectionString() {
+  public static string GetConfigurationDbFileName() {
+    var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+    return isDevelopment ? "config_dev.db" : "config.db";
+  }
+
+  /// <summary>
+  /// Get the configuration database file path
+  /// </summary>
+  public static string GetConfigurationDbFilePath() {
     var dbFile = Path.Combine(
       Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
       "xtreamium",
-      "config.db");
+      GetConfigurationDbFileName());
 
     Directory.CreateDirectory(Path.GetDirectoryName(dbFile)!);
 
-    return $"Data Source={dbFile}";
+    return dbFile;
+  }
+
+  /// <summary>
+  /// Get the configuration database connection string
+  /// </summary>
+  public static string GetConfigurationDbConnectionString() {
+    return $"Data Source={GetConfigurationDbFilePath()}";
   }
 
   /// <summary>

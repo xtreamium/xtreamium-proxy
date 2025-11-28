@@ -59,6 +59,7 @@ public static class RecordEndpoints {
 
           await scheduler.ScheduleJob(job, trigger, ct);
           var recording = new Recording {
+            Id = Guid.NewGuid(),
             Url = HttpUtility.UrlDecode(request.Url),
             Title = request.Title,
             StartTime = request.StartTime,
@@ -76,9 +77,9 @@ public static class RecordEndpoints {
       }
     );
 
-    endpoints.MapDelete("{id:int}",
+    endpoints.MapDelete("{id:guid}",
       async (
-        int id,
+        Guid id,
         CancellationToken ct,
         [FromServices] IRecordingService recordingService,
         [FromServices] IRecordingRepository recordingRepository) => {

@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.Extensions.Options;
 using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data.Models;
@@ -20,6 +21,19 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
   public SettingsRepository(IDbConnectionFactory connectionFactory, IOptions<AppConfiguration> config) : base(
     connectionFactory) {
     _config = config.Value;
+  }
+
+  public override async Task<Setting?> GetByIdAsync(Guid id) {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "SELECT * FROM settings WHERE Id = @Id";
+    return await connection.QueryFirstOrDefaultAsync<Setting>(sql, new { Id = id });
+  }
+
+  public override async Task<bool> DeleteAsync(Guid id) {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "DELETE FROM settings WHERE Id = @Id";
+    var result = await connection.ExecuteAsync(sql, new { Id = id });
+    return result > 0;
   }
 
   public async Task<Dictionary<string, string>> GetSettingsAsync() {
@@ -45,8 +59,8 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
     }
 
     if (!settingsDict.ContainsKey("Port")) {
-      await UpdateOrCreateSettingAsync("Port", "8963");
-      settingsDict["Port"] = "8963";
+      await UpdateOrCreateSettingAsync("Port", _config.Networking.Port.ToString());
+      settingsDict["Port"] = _config.Networking.Port.ToString();
     }
 
     return settingsDict;
@@ -62,7 +76,7 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
     var existing = (await GetAllAsync()).FirstOrDefault(s => s.Key == key);
 
     if (existing == null) {
-      await InsertAsync(new Setting {Key = key, Value = value});
+      await InsertAsync(new Setting {Id = Guid.NewGuid(), Key = key, Value = value});
     } else {
       existing = existing with {Value = value};
       await UpdateAsync(existing);

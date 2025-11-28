@@ -1,4 +1,4 @@
-﻿using FFMpegCore;
+﻿﻿using FFMpegCore;
 using FFMpegCore.Enums;
 using Quartz;
 using Xtreamium.Proxy.Data.Repositories;
@@ -89,7 +89,7 @@ public class RecordingService : IRecordingService {
     return outputFile;
   }
 
-  public async Task<bool> DeleteRecordingAsync(int recordingId, CancellationToken cancellationToken = default) {
+  public async Task<bool> DeleteRecordingAsync(Guid recordingId, CancellationToken cancellationToken = default) {
     try {
       var recording = await _recordingRepository.GetByIdAsync(recordingId);
       if (recording == null) {

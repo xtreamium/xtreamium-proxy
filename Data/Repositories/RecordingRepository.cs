@@ -13,6 +13,25 @@ public class RecordingRepository : Repository<Recording>, IRecordingRepository {
   public RecordingRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory) {
   }
 
+  public override async Task<IEnumerable<Recording>> GetAllAsync() {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "SELECT * FROM recordings ORDER BY StartTime DESC";
+    return await connection.QueryAsync<Recording>(sql);
+  }
+
+  public override async Task<Recording?> GetByIdAsync(Guid id) {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "SELECT * FROM recordings WHERE Id = @Id";
+    return await connection.QueryFirstOrDefaultAsync<Recording>(sql, new { Id = id });
+  }
+
+  public override async Task<bool> DeleteAsync(Guid id) {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "DELETE FROM recordings WHERE Id = @Id";
+    var result = await connection.ExecuteAsync(sql, new { Id = id });
+    return result > 0;
+  }
+
   public async Task<Recording?> GetByJobIdAsync(string jobId) {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     const string sql = "SELECT * FROM recordings WHERE JobId = @JobId";

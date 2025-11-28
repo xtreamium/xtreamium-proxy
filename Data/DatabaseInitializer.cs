@@ -22,16 +22,15 @@ public class DatabaseInitializer {
   public async Task<string> InitializeQuartzTablesAsync() {
     _logger.LogDebug("Initializing Quartz database tables");
 
-    var dbFile = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-      "xtreamium",
-      "config.db");
+    var dbFile = DatabaseServiceExtensions.GetConfigurationDbFilePath();
 
     // Only create Quartz tables if database doesn't exist
-    if (!File.Exists(dbFile)) {
-      _logger.LogInformation("Creating new database with Quartz schema");
-      await CreateQuartzTablesAsync();
+    if (File.Exists(dbFile)) {
+      return _connectionFactory.ConnectionString;
     }
+
+    _logger.LogInformation("Creating new database with Quartz schema");
+    await CreateQuartzTablesAsync();
 
     return _connectionFactory.ConnectionString;
   }

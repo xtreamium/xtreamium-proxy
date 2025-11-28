@@ -23,8 +23,9 @@ public class SqliteConnectionFactory : IDbConnectionFactory {
       Directory.CreateDirectory(dbPath);
     }
 
+    var dbFileName = DatabaseServiceExtensions.GetConfigurationDbFileName();
     var builder = new SqliteConnectionStringBuilder {
-      DataSource = Path.Combine(dbPath, "config.db"),
+      DataSource = Path.Combine(dbPath, dbFileName),
       Cache = SqliteCacheMode.Shared,
       Mode = SqliteOpenMode.ReadWriteCreate
     };

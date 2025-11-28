@@ -6,9 +6,19 @@ namespace Xtreamium.Proxy.Configuration;
 public class AppConfiguration {
   public const string SectionName = "App";
 
+  public NetworkingConfiguration Networking { get; set; } = new();
   public VideoPlayerConfiguration VideoPlayer { get; set; } = new();
   public RecordingsConfiguration Recordings { get; set; } = new();
   public List<string> AllowedCorsOrigins { get; set; } = new();
+}
+
+public class NetworkingConfiguration {
+  /// <summary>
+  /// Default port for the application
+  /// </summary>
+  public const int DefaultPort = 8963;
+
+  public int Port { get; set; } = DefaultPort;
 }
 
 public class VideoPlayerConfiguration {

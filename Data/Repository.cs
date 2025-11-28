@@ -20,7 +20,7 @@ public class Repository<T> : IRepository<T> where T : class {
     return await connection.GetAllAsync<T>();
   }
 
-  public virtual async Task<T?> GetByIdAsync(int id) {
+  public virtual async Task<T?> GetByIdAsync(Guid id) {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     return await connection.GetAsync<T>(id);
   }
@@ -35,7 +35,7 @@ public class Repository<T> : IRepository<T> where T : class {
     return await connection.UpdateAsync(entity);
   }
 
-  public virtual async Task<bool> DeleteAsync(int id) {
+  public virtual async Task<bool> DeleteAsync(Guid id) {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     var entity = await connection.GetAsync<T>(id);
     if (entity == null) return false;

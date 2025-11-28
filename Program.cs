@@ -1,9 +1,11 @@
 ﻿using CrystalQuartz.AspNetCore;
 using Dapper;
+using Microsoft.Extensions.Options;
 using Quartz;
 using Serilog;
 using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data;
+using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Endpoints;
 using Xtreamium.Proxy.Hubs;
 using Xtreamium.Proxy.Models;
@@ -15,9 +17,6 @@ if (args.Contains("--version")) {
   Console.WriteLine(VersionHelper.GetVersion());
   return;
 }
-
-// Configure Dapper type handlers for SQLite compatibility
-SqlMapper.AddTypeHandler(new DateTimeOffsetHandler());
 
 // Handle Velopack events first (Windows only)
 if (OperatingSystem.IsWindows()) {
@@ -111,6 +110,29 @@ app.UseCrystalQuartz(() => app
   .Services.GetRequiredService<ISchedulerFactory>()
   .GetScheduler());
 
+// Get the port from settings and configure the server
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+var appConfig = app.Services.GetRequiredService<IOptions<AppConfiguration>>().Value;
+using (var scope = app.Services.CreateScope()) {
+  var settingsRepository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
+  try {
+    var settings = await settingsRepository.GetSettingsAsync();
+    if (settings.TryGetValue("Port", out var portValue) && int.TryParse(portValue, out var port)) {
+      app.Urls.Clear();
+      app.Urls.Add($"http://0.0.0.0:{port}");
+      logger.LogInformation("Server configured to listen on port {Port}", port);
+    } else {
+      logger.LogWarning("Port setting not found or invalid. Using configured port {Port}", appConfig.Networking.Port);
+      app.Urls.Clear();
+      app.Urls.Add($"http://0.0.0.0:{appConfig.Networking.Port}");
+    }
+  } catch (Exception ex) {
+    logger.LogError(ex, "Error reading port from settings. Using configured port {Port}", appConfig.Networking.Port);
+    app.Urls.Clear();
+    app.Urls.Add($"http://0.0.0.0:{appConfig.Networking.Port}");
+  }
+}
+
 // Start update check in background (Windows only)
 if (OperatingSystem.IsWindows()) {
   _ = Task.Run(async () => {
@@ -119,16 +141,14 @@ if (OperatingSystem.IsWindows()) {
 
     try {
       if (await updateManager.CheckForUpdatesAsync()) {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("Update available. Downloading...");
 
         if (await updateManager.DownloadAndInstallUpdatesAsync()) {
-          logger.LogInformation("Update installed. Application will restart.");
+          logger.LogInformation("Update installed. Application will restart");
           // Velopack will automatically restart the app
         }
       }
     } catch (Exception ex) {
-      var logger = app.Services.GetRequiredService<ILogger<Program>>();
       logger.LogError(ex, "Error during update check");
     }
   });

@@ -7,19 +7,20 @@ namespace Xtreamium.Proxy.Data.Migrations;
 public class InitialTables : Migration {
   public override void Up() {
     Create.Table("settings")
-      .WithColumn("Id").AsInt32().PrimaryKey().Identity()
+      .WithColumn("Id").AsGuid().PrimaryKey()
       .WithColumn("Key").AsString().NotNullable().Unique()
       .WithColumn("Value").AsString().NotNullable();
 
     Create.Table("recordings")
-      .WithColumn("Id").AsInt32().PrimaryKey().Identity()
+      .WithColumn("Id").AsGuid().PrimaryKey()
       .WithColumn("JobId").AsString().NotNullable()
       .WithColumn("Url").AsString().NotNullable()
       .WithColumn("Title").AsString().NotNullable()
       .WithColumn("StartTime").AsDateTime().NotNullable()
       .WithColumn("EndTime").AsDateTime().NotNullable()
       .WithColumn("IsRecorded").AsBoolean().NotNullable().WithDefaultValue(false)
-      .WithColumn("FilePath").AsString().Nullable();
+      .WithColumn("FilePath").AsString().Nullable()
+      .WithColumn("Status").AsString().NotNullable().WithDefaultValue("pending");
   }
 
   public override void Down() {
