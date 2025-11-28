@@ -44,7 +44,8 @@ public class RecordJob : IJob {
       var outputFile = await _recorder.RecordShow(
         data.Url.DecodeUrl(),
         data.StartTime,
-        data.EndTime);
+        data.EndTime,
+        context.CancellationToken);
 
       if (!string.IsNullOrEmpty(outputFile)) {
         var recording = await _recordingRepository.GetByJobIdAsync(jobId);
@@ -55,7 +56,22 @@ public class RecordJob : IJob {
 
         recording.IsRecorded = true;
         recording.FilePath = outputFile;
+        recording.Status = "complete"; // Successfully recorded
         await _recordingRepository.UpdateAsync(recording);
+      }
+    } catch (OperationCanceledException) {
+      _logger.LogInformation("Recording job {JobId} was cancelled", jobId);
+      
+      // Recording was cancelled externally - mark as partial
+      try {
+        var recording = await _recordingRepository.GetByJobIdAsync(jobId);
+        if (recording is not null) {
+          recording.Status = "partial";
+          await _recordingRepository.UpdateAsync(recording);
+          _logger.LogInformation("Marked recording {JobId} as partial", jobId);
+        }
+      } catch (Exception ex) {
+        _logger.LogWarning(ex, "Failed to update recording status to partial for JobId {JobId}", jobId);
       }
     } catch (JsonException jse) {
       _logger.LogError(jse, "Failed to deserialize recording data");

@@ -6,6 +6,7 @@ using Quartz;
 using Xtreamium.Proxy.Data.Models;
 using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
+using Xtreamium.Proxy.Services;
 using Xtreamium.Proxy.Services.Jobs;
 
 namespace Xtreamium.Proxy.Endpoints;
@@ -19,7 +20,7 @@ public static class RecordEndpoints {
       return Results.Ok(recordings);
     });
     endpoints.MapPost("play", async () => { });
-      
+
     endpoints.MapPost("",
       async (
         CancellationToken ct,
@@ -78,41 +79,27 @@ public static class RecordEndpoints {
     endpoints.MapDelete("{id:int}",
       async (
         int id,
-        [FromServices] IRecordingRepository recordingRepository,
-        [FromServices] ILoggerFactory loggerFactory) => {
-        var logger = loggerFactory.CreateLogger("RecordEndpoints");
-
-        try {
-          // Get the recording first to check if file exists
-          var recording = await recordingRepository.GetByIdAsync(id);
-          if (recording == null) {
-            return Results.NotFound(new {message = $"Recording with ID {id} not found"});
-          }
-
-          // Delete the file if it exists
-          if (!string.IsNullOrEmpty(recording.FilePath) && File.Exists(recording.FilePath)) {
-            try {
-              File.Delete(recording.FilePath);
-              logger.LogInformation("Deleted recording file: {FilePath}", recording.FilePath);
-            } catch (Exception fileEx) {
-              logger.LogWarning(fileEx, "Failed to delete recording file: {FilePath}", recording.FilePath);
-              // Continue with database deletion even if file deletion fails
-            }
-          }
-
-          // Delete the database record
-          var deleted = await recordingRepository.DeleteAsync(id);
-          if (!deleted) {
-            return Results.StatusCode(StatusCodes.Status500InternalServerError);
-          }
-
-          logger.LogInformation("Deleted recording with ID {Id}", id);
-          return Results.NoContent();
-        } catch (Exception e) {
-          logger.LogError(e, "Error deleting recording with ID {Id}", id);
-          return Results.StatusCode(StatusCodes.Status500InternalServerError);
+        CancellationToken ct,
+        [FromServices] IRecordingService recordingService,
+        [FromServices] IRecordingRepository recordingRepository) => {
+        // Check if recording exists first
+        var recording = await recordingRepository.GetByIdAsync(id);
+        if (recording == null) {
+          return Results.NotFound(new {message = $"Recording with ID {id} not found"});
         }
+
+        var deleted = await recordingService.DeleteRecordingAsync(id, ct);
+        return !deleted
+          ? Results.StatusCode(StatusCodes.Status500InternalServerError)
+          : Results.NoContent();
       }
     );
+    
+    endpoints.MapPost("open-folder", async ([FromServices] IVideoPlayerService player) =>
+        (await player.OpenRecordingsFolderAsync())
+          ? Results.Ok()
+          : Results.BadRequest()
+      )
+      .RequireCors("WebFrontend");
   }
 }

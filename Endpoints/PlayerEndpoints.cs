@@ -9,7 +9,9 @@ public static class PlayerEndpoints {
     var endpoints = app.MapGroup("/play");
     endpoints.MapPost(
         "{url}", async ([FromServices] IVideoPlayerService player, string url) =>
-        (await player.PlayFromUrl(HttpUtility.UrlDecode(url))) ? Results.Ok() : Results.BadRequest()
+        (await player.PlayFromUrl(HttpUtility.UrlDecode(url)))
+          ? Results.Ok()
+          : Results.BadRequest()
       )
       .RequireCors("WebFrontend");
   }

@@ -21,7 +21,7 @@ public class RecordingRepository : Repository<Recording>, IRecordingRepository {
 
   public async Task<IEnumerable<Recording>> GetScheduledRecordingsAsync() {
     using var connection = await _connectionFactory.CreateConnectionAsync();
-    const string sql = "SELECT * FROM recordings WHERE IsRecorded = 0 ORDER BY StartTime";
+    const string sql = "SELECT * FROM recordings WHERE IsRecorded = 0 ORDER BY StartTime DESC";
     return await connection.QueryAsync<Recording>(sql);
   }
 

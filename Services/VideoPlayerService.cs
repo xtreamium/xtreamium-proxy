@@ -15,10 +15,28 @@ public class VideoPlayerService(
     }
 
     try {
+      // Handle file:// protocol - extract the local file path
+      var pathOrUrl = url;
+      if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase)) {
+        pathOrUrl = url.Substring(7); // Remove "file://" prefix
+
+        // On Windows, handle file:///C:/path format
+        if (OperatingSystem.IsWindows() && pathOrUrl.StartsWith("/") && pathOrUrl.Length > 2 && pathOrUrl[2] == ':') {
+          pathOrUrl = pathOrUrl.Substring(1); // Remove leading slash for Windows paths
+        }
+
+        if (!File.Exists(pathOrUrl)) {
+          logger.LogError("Local file not found: {Path}", pathOrUrl);
+          return false;
+        }
+
+        logger.LogDebug("Playing local file: {Path}", pathOrUrl);
+      }
+
       var exe = await settingsRepository.GetSettingAsync("MediaPlayerPath");
       var args = SanitizeMpvArguments(
         await settingsRepository.GetSettingAsync("MediaPlayerArguments"),
-        url);
+        pathOrUrl);
 
       if (string.IsNullOrWhiteSpace(exe)) {
         logger.LogError("Video player executable not configured");
@@ -50,6 +68,71 @@ public class VideoPlayerService(
       return false;
     } catch (Exception ex) {
       logger.LogError(ex, "Error while starting video player");
+      return false;
+    }
+  }
+
+  /// <summary>
+  /// Attempt to open the recordings folder in the system file browser
+  /// The will be initiated from a POST in the browser
+  /// </summary>
+  /// <param name="cancellationToken"></param>
+  /// <returns></returns>
+  public async Task<bool> OpenRecordingsFolderAsync(CancellationToken cancellationToken = default) {
+    try {
+      var recordingsPath = await settingsRepository.GetSettingAsync("RecordingsPath");
+
+      if (string.IsNullOrWhiteSpace(recordingsPath)) {
+        logger.LogError("Recordings path not configured");
+        return false;
+      }
+
+      if (!Directory.Exists(recordingsPath)) {
+        logger.LogWarning("Recordings directory does not exist: {Path}", recordingsPath);
+        try {
+          Directory.CreateDirectory(recordingsPath);
+          logger.LogInformation("Created recordings directory: {Path}", recordingsPath);
+        } catch (Exception ex) {
+          logger.LogError(ex, "Failed to create recordings directory: {Path}", recordingsPath);
+          return false;
+        }
+      }
+
+      var psi = new ProcessStartInfo();
+
+      if (OperatingSystem.IsWindows()) {
+        psi.FileName = "explorer.exe";
+        psi.Arguments = recordingsPath;
+      } else if (OperatingSystem.IsLinux()) {
+        psi.FileName = "xdg-open";
+        psi.Arguments = QuoteArgument(recordingsPath);
+        psi.UseShellExecute = false;
+      } else if (OperatingSystem.IsMacOS()) {
+        psi.FileName = "open";
+        psi.Arguments = QuoteArgument(recordingsPath);
+        psi.UseShellExecute = false;
+      } else {
+        logger.LogError("Unsupported operating system");
+        return false;
+      }
+
+      psi.CreateNoWindow = true;
+
+      logger.LogDebug("Opening recordings folder: {Path} with {Command} {Arguments}",
+        recordingsPath, psi.FileName, psi.Arguments);
+
+      using var process = Process.Start(psi);
+      if (process != null) {
+        return true;
+      }
+
+      logger.LogError("Failed to start file browser process");
+      return false;
+    } catch (OperationCanceledException) {
+      logger.LogInformation("OpenRecordingsFolderAsync canceled");
+      return false;
+    } catch (Exception ex) {
+      logger.LogError(ex, "Error while opening recordings folder");
       return false;
     }
   }

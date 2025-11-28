@@ -1,4 +1,4 @@
-﻿using Dapper.Contrib.Extensions;
+﻿﻿using Dapper.Contrib.Extensions;
 
 namespace Xtreamium.Proxy.Data.Models;
 
@@ -13,6 +13,15 @@ public record Recording {
   public required string Title { get; set; }
   public DateTimeOffset StartTime { get; set; }
   public DateTimeOffset EndTime { get; set; }
-  public bool IsRecorded { get; set; } = false;
+  public bool IsRecorded { get; set; }
   public string? FilePath { get; set; }
+  
+  /// <summary>
+  /// Status of the recording: "pending", "complete", "partial", or "failed"
+  /// pending = scheduled but not yet recorded
+  /// complete = successfully recorded the full duration
+  /// partial = recording was interrupted (user cancelled)
+  /// failed = recording encountered an error
+  /// </summary>
+  public string Status { get; set; } = "pending";
 }

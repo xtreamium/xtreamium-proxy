@@ -152,4 +152,15 @@ csharp_space_between_method_call_empty_parameter_list_parentheses = false
 csharp_preserve_single_line_statements = true
 csharp_preserve_single_line_blocks = true
 
+# Ternary operator formatting (standard - limited support in VS Code)
 csharp_nested_ternary_style = compact
+
+###############################
+# ReSharper/Rider Settings    #
+###############################
+
+# Ternary operator wrapping (Rider-specific)
+resharper_csharp_wrap_ternary_expr_style = chop_always
+resharper_csharp_nested_ternary_style = simple_wrap
+resharper_csharp_wrap_before_ternary_opsigns = true
+

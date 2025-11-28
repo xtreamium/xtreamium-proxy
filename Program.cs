@@ -26,6 +26,16 @@ if (OperatingSystem.IsWindows()) {
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure log directory in the application data folder
+var logDirectory = Path.Combine(
+  Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+  "xtreamium",
+  "logs");
+Directory.CreateDirectory(logDirectory);
+
+// Set the log path for Serilog
+builder.Configuration["Serilog:WriteTo:1:Args:path"] = Path.Combine(logDirectory, "applog-.txt");
+
 builder.Services.Configure<AppConfiguration>(builder.Configuration.GetSection(AppConfiguration.SectionName));
 builder.Services.Configure<CorsConfiguration>(builder.Configuration.GetSection(CorsConfiguration.SectionName));
 
@@ -64,6 +74,7 @@ builder.Services.AddCors(options => {
 
 builder.Services.AddScoped<IVideoPlayerService, VideoPlayerService>();
 builder.Services.AddScoped<IRecordingService, RecordingService>();
+builder.Services.AddScoped<ILogService, LogService>();
 
 // Register validators
 builder.Services.AddRecordVmValidator();
@@ -90,10 +101,12 @@ app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
 app.MapGet("/", () => "Hello, Sailor!");
 app.MapGet("/ping", () => new {Ping = "Pong"});
 
+app.RegisterBrowseEndpoints();
 app.RegisterVersionEndpoints();
 app.RegisterPlayerEndpoints();
 app.RegisterRecordEndpoints();
 app.RegisterSettingsEndpoints();
+app.RegisterLogEndpoints();
 app.UseCrystalQuartz(() => app
   .Services.GetRequiredService<ISchedulerFactory>()
   .GetScheduler());
