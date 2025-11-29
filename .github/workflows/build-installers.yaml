@@ -165,6 +165,10 @@ jobs:
             2)
                 echo "Installing user service..."
 
+                # Stop existing service if running
+                systemctl --user stop $USER_SERVICE_NAME || true
+                systemctl --user disable $USER_SERVICE_NAME || true
+
                 # Create user directory and copy files
                 mkdir -p $USER_INSTALL_DIR
                 cp xtreamium-proxy $USER_INSTALL_DIR/
