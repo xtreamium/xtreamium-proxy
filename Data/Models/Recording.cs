@@ -1,10 +1,10 @@
-﻿﻿using Dapper.Contrib.Extensions;
+﻿using Dapper.Contrib.Extensions;
 
 namespace Xtreamium.Proxy.Data.Models;
 
 [Table("recordings")]
 public record Recording {
-  [Key]
+  [ExplicitKey]
   public Guid Id { get; set; }
 
   public required string JobId { get; set; }
@@ -15,7 +15,7 @@ public record Recording {
   public DateTimeOffset EndTime { get; set; }
   public bool IsRecorded { get; set; }
   public string? FilePath { get; set; }
-  
+
   /// <summary>
   /// Status of the recording: "pending", "complete", "partial", or "failed"
   /// pending = scheduled but not yet recorded
