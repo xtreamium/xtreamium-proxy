@@ -15,7 +15,7 @@ public static class SettingsEndpoint {
         MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
         MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
         RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
-        Port = int.TryParse(settings.GetValueOrDefault("Port", "5000"), out var port) ? port : 5000
+        Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963
       };
       return Results.Ok(vm);
     });
