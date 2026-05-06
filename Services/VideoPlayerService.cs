@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security;
+using System.Collections.Concurrent;
 using Xtreamium.Proxy.Data.Repositories;
 
 namespace Xtreamium.Proxy.Services;
@@ -8,6 +9,10 @@ public class VideoPlayerService(
   ILogger<VideoPlayerService> logger,
   ISettingsRepository settingsRepository)
   : IVideoPlayerService {
+  private static readonly ConcurrentDictionary<string, TrackedPlayerProcess> ActivePlayersByExecutable =
+    new(StringComparer.OrdinalIgnoreCase);
+  private static readonly SemaphoreSlim PlayerLaunchLock = new(1, 1);
+
   public async Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
     if (string.IsNullOrWhiteSpace(url)) {
       logger.LogWarning("PlayFromUrl called with empty URL");
@@ -15,14 +20,16 @@ public class VideoPlayerService(
     }
 
     try {
-      // Handle file:// protocol - extract the local file path
       var pathOrUrl = url;
       if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase)) {
+        //This is a recording, need to sanitise the path
         pathOrUrl = url.Substring(7); // Remove "file://" prefix
 
         // On Windows, handle file:///C:/path format
-        if (OperatingSystem.IsWindows() && pathOrUrl.StartsWith("/") && pathOrUrl.Length > 2 && pathOrUrl[2] == ':') {
-          pathOrUrl = pathOrUrl.Substring(1); // Remove leading slash for Windows paths
+        if (OperatingSystem.IsWindows() && pathOrUrl.StartsWith($"/") &&
+            pathOrUrl.Length > 2 && pathOrUrl[2] == ':') {
+          pathOrUrl = pathOrUrl[1..]; // Remove leading slash for Windows paths
+          //TODO: Revisit all this on an actual Windows installation
         }
 
         if (!File.Exists(pathOrUrl)) {
@@ -47,22 +54,33 @@ public class VideoPlayerService(
         logger.LogWarning("Configured video player executable not found: {Path}", exe);
       }
 
-      var psi = new ProcessStartInfo {
-        FileName = exe,
-        Arguments = args,
-        CreateNoWindow = true,
-        UseShellExecute = false
-      };
+      var executableKey = NormalizeExecutablePath(exe);
 
-      logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
+      await PlayerLaunchLock.WaitAsync(cancellationToken);
+      try {
+        StopTrackedPlayer(executableKey);
 
-      using var process = Process.Start(psi);
-      if (process != null) {
-        return true;
+        var psi = new ProcessStartInfo {
+          FileName = exe,
+          Arguments = args,
+          CreateNoWindow = true,
+          UseShellExecute = false
+        };
+
+        logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
+
+        using var process = Process.Start(psi);
+        if (process != null) {
+          ActivePlayersByExecutable[executableKey] =
+            new TrackedPlayerProcess(process.Id, process.StartTime.ToUniversalTime());
+          return true;
+        }
+
+        logger.LogError("Failed to start video player process");
+        return false;
+      } finally {
+        PlayerLaunchLock.Release();
       }
-
-      logger.LogError("Failed to start video player process");
-      return false;
     } catch (OperationCanceledException) {
       logger.LogInformation("PlayFromUrl canceled");
       return false;
@@ -180,4 +198,54 @@ public class VideoPlayerService(
     // If no placeholder, append URL safely
     return $"{argumentTemplate} {QuoteArgument(url)}";
   }
+
+  private void StopTrackedPlayer(string executableKey) {
+    if (!ActivePlayersByExecutable.TryGetValue(executableKey, out var trackedProcess)) {
+      return;
+    }
+
+    if (!TryGetOwnedProcess(trackedProcess, out var process)) {
+      ActivePlayersByExecutable.TryRemove(executableKey, out _);
+      return;
+    }
+
+    try {
+      if (!process.HasExited) {
+        logger.LogInformation("Closing existing player process {ProcessId} started by this app", process.Id);
+        process.Kill(true);
+        process.WaitForExit(5000);
+      }
+    } catch (Exception ex) {
+      logger.LogWarning(ex, "Failed to close previously started player process {ProcessId}", trackedProcess.ProcessId);
+    } finally {
+      process.Dispose();
+      ActivePlayersByExecutable.TryRemove(executableKey, out _);
+    }
+  }
+
+  private static bool TryGetOwnedProcess(TrackedPlayerProcess trackedProcess, out Process process) {
+    process = null!;
+    try {
+      process = Process.GetProcessById(trackedProcess.ProcessId);
+      var startTimeUtc = process.StartTime.ToUniversalTime();
+      if (startTimeUtc != trackedProcess.StartTimeUtc) {
+        process.Dispose();
+        return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private static string NormalizeExecutablePath(string executablePath) {
+    try {
+      return Path.GetFullPath(executablePath);
+    } catch {
+      return executablePath;
+    }
+  }
+
+  private sealed record TrackedPlayerProcess(int ProcessId, DateTime StartTimeUtc);
 }

@@ -140,3 +140,5 @@ scripts/testing/windows/storage/
 id_rsa*
 id_ed25519*
 *.ppk
+
+*.lscache

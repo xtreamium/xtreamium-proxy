@@ -35,6 +35,11 @@ public static class RecordEndpoints {
           return Results.BadRequest(validationResult.Errors);
         }
 
+        var requestedDuration = request.EndTime.Subtract(request.StartTime).TotalMinutes;
+        logger.LogTrace(
+          "[DIAG] Schedule recording request — StartTime: {StartTime}, EndTime: {EndTime}, Duration: {DurationMinutes}min, UtcNow: {UtcNow}",
+          request.StartTime, request.EndTime, Math.Round(requestedDuration, 2), DateTimeOffset.UtcNow);
+
         var jobId = $"RecordJob-{Guid.NewGuid()}";
         try {
           var scheduler = await schedulerFactory.GetScheduler(ct);

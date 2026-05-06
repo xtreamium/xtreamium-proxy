@@ -41,6 +41,11 @@ public class RecordJob : IJob {
         throw new InvalidOperationException("Invalid recording data");
       }
 
+      var jobDuration = data.EndTime.Subtract(data.StartTime).TotalMinutes;
+      _logger.LogTrace(
+        "[DIAG] RecordJob firing — JobId: {JobId}, StartTime: {StartTime}, EndTime: {EndTime}, Duration: {DurationMinutes}min, UtcNow: {UtcNow}",
+        jobId, data.StartTime, data.EndTime, Math.Round(jobDuration, 2), DateTimeOffset.UtcNow);
+
       var outputFile = await _recorder.RecordShow(
         data.Url.DecodeUrl(),
         data.StartTime,

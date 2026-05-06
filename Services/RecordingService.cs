@@ -34,6 +34,10 @@ public class RecordingService : IRecordingService {
         "xtreamium"));
 
     var duration = endTime.Subtract(startTime).TotalSeconds;
+    _logger.LogTrace(
+      "[DIAG] RecordShow called — StartTime: {StartTime}, EndTime: {EndTime}, Duration: {DurationSeconds}s ({DurationMinutes}min), UtcNow: {UtcNow}",
+      startTime, endTime, duration, Math.Round(duration / 60, 2), DateTimeOffset.UtcNow);
+
     // Validate and ensure output directory exists
     SecurityHelpers.EnsureDirectoryExistsAndWritable(outputPath);
 
@@ -46,7 +50,12 @@ public class RecordingService : IRecordingService {
 
     try {
       var task = FFMpegArguments
-        .FromUrlInput(new Uri(url))
+        .FromUrlInput(new Uri(url), inputOptions => inputOptions
+          // Reconnect on stream drop — critical for live IPTV streams
+          .WithCustomArgument("-reconnect 1")
+          .WithCustomArgument("-reconnect_streamed 1")
+          .WithCustomArgument("-reconnect_delay_max 10")
+          .WithCustomArgument("-reconnect_at_eof 1"))
         .OutputToFile(outputFile, true, options => options
           .CopyChannel()
           .WithAudioCodec(AudioCodec.Aac)
