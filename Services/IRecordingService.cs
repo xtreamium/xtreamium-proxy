@@ -1,4 +1,4 @@
-namespace Xtreamium.Proxy.Services;
+﻿namespace Xtreamium.Proxy.Services;
 
 /// <summary>
 /// Interface for video recording operations
@@ -8,10 +8,3 @@ public interface IRecordingService {
   Task<bool> DeleteRecordingAsync(Guid recordingId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Interface for video player operations
-/// </summary>
-public interface IVideoPlayerService {
-  Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default);
-  Task<bool> OpenRecordingsFolderAsync(CancellationToken cancellationToken = default);
-}

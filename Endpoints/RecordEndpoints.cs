@@ -101,11 +101,13 @@ public static class RecordEndpoints {
       }
     );
     
-    endpoints.MapPost("open-folder", async ([FromServices] IVideoPlayerService player) =>
-        (await player.OpenRecordingsFolderAsync())
-          ? Results.Ok()
-          : Results.BadRequest()
-      )
+    endpoints.MapPost("open-folder", async ([FromServices] IVideoPlayerService player) => {
+        var result = await player.OpenRecordingsFolderAsync();
+        if (result.Success) return Results.Ok();
+        return result.IsClientError
+          ? Results.BadRequest(new { error = result.ErrorMessage })
+          : Results.InternalServerError(new { error = result.ErrorMessage });
+      })
       .RequireCors("WebFrontend");
   }
 }

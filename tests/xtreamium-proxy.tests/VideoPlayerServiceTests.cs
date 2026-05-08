@@ -43,11 +43,11 @@ public class VideoPlayerServiceTests {
     var externalPid = externallyStartedProcess!.Id;
 
     var firstPlayResult = await service.PlayFromUrl("stream-1");
-    Assert.True(firstPlayResult);
+    Assert.True(firstPlayResult.Success);
     var firstAppPid = await WaitForLaunchPidAsync(launchLogPath, "stream-1");
 
     var secondPlayResult = await service.PlayFromUrl("stream-2");
-    Assert.True(secondPlayResult);
+    Assert.True(secondPlayResult.Success);
     var secondAppPid = await WaitForLaunchPidAsync(launchLogPath, "stream-2");
 
     Assert.True(IsProcessAlive(externalPid));
@@ -96,11 +96,11 @@ public class VideoPlayerServiceTests {
       externalPid = externallyStartedProcess!.Id;
 
       var firstPlayResult = await service.PlayFromUrl("stream-1");
-      Assert.True(firstPlayResult);
+      Assert.True(firstPlayResult.Success);
       var firstAppPid = await WaitForLaunchPidAsync(launchLogPath, "stream-1");
 
       var secondPlayResult = await service.PlayFromUrl("stream-2");
-      Assert.True(secondPlayResult);
+      Assert.True(secondPlayResult.Success);
       secondAppPid = await WaitForLaunchPidAsync(launchLogPath, "stream-2");
 
       Assert.True(IsProcessAlive(externalPid));
@@ -155,7 +155,7 @@ public class VideoPlayerServiceTests {
     SetTrackedPlayerProcessForTests(scriptPath, externalPid, externalStartTimeUtc.AddSeconds(-1));
 
     var playResult = await service.PlayFromUrl("stream-stale");
-    Assert.True(playResult);
+    Assert.True(playResult.Success);
 
     var appPid = await WaitForLaunchPidAsync(launchLogPath, "stream-stale");
 
@@ -208,7 +208,7 @@ public class VideoPlayerServiceTests {
       SetTrackedPlayerProcessForTests(scriptPath, externalPid, externalStartTimeUtc.AddSeconds(-1));
 
       var playResult = await service.PlayFromUrl("stream-stale");
-      Assert.True(playResult);
+      Assert.True(playResult.Success);
 
       appPid = await WaitForLaunchPidAsync(launchLogPath, "stream-stale");
 
@@ -225,17 +225,69 @@ public class VideoPlayerServiceTests {
     }
   }
 
+  [Fact]
+  public async Task PlayFromUrl_MultilineArguments_ArePassedAsSeparateArguments() {
+    if (!OperatingSystem.IsLinux()) {
+      return;
+    }
+
+    var tempDirectory = Directory.CreateTempSubdirectory("videoplayer-service-tests-");
+    var appPid = 0;
+    try {
+      var scriptPath = Path.Combine(tempDirectory.FullName, "fake-player.sh");
+      var launchLogPath = Path.Combine(tempDirectory.FullName, "launches.log");
+      const string url = "https://example.com/stream.ts";
+
+      await File.WriteAllTextAsync(scriptPath,
+        $"#!/usr/bin/env sh\nprintf '%s' \"$$\" >> '{launchLogPath}'\nfor arg in \"$@\"; do\n  printf '|%s' \"$arg\" >> '{launchLogPath}'\ndone\nprintf '\\n' >> '{launchLogPath}'\nsleep 120\n");
+      File.SetUnixFileMode(scriptPath,
+        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+        UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
+
+      var repository = new FakeSettingsRepository(new Dictionary<string, string> {
+        ["MediaPlayerPath"] = scriptPath,
+        ["MediaPlayerArguments"] = "--keep-open=yes\n--geometry=1024x768-0-0\n--ontop"
+      });
+
+      var service = new VideoPlayerService(NullLogger<VideoPlayerService>.Instance, repository);
+
+      var playResult = await service.PlayFromUrl(url);
+      Assert.True(playResult.Success);
+
+      var launchRecord = await WaitForLaunchRecordAsync(launchLogPath, url);
+      appPid = launchRecord.ProcessId;
+
+      Assert.Equal(new[] {
+        "--keep-open=yes",
+        "--geometry=1024x768-0-0",
+        "--ontop",
+        url
+      }, launchRecord.Arguments);
+    } finally {
+      KillIfAlive(appPid);
+      try {
+        tempDirectory.Delete(recursive: true);
+      } catch {
+        // Ignore cleanup errors.
+      }
+    }
+  }
+
   private static async Task<int> WaitForLaunchPidAsync(string launchLogPath, string marker) {
+    return (await WaitForLaunchRecordAsync(launchLogPath, marker)).ProcessId;
+  }
+
+  private static async Task<LaunchRecord> WaitForLaunchRecordAsync(string launchLogPath, string marker) {
     var timeoutAt = DateTime.UtcNow.AddSeconds(8);
 
     while (DateTime.UtcNow < timeoutAt) {
       if (File.Exists(launchLogPath)) {
         var lines = await File.ReadAllLinesAsync(launchLogPath);
         foreach (var line in lines) {
-          var parts = line.Split('|', 2);
-          if (parts.Length == 2 && parts[1].Contains(marker, StringComparison.Ordinal) &&
+          var parts = line.Split('|');
+          if (parts.Length >= 2 && parts.Skip(1).Any(arg => arg.Contains(marker, StringComparison.Ordinal)) &&
               int.TryParse(parts[0], out var pid)) {
-            return pid;
+            return new LaunchRecord(pid, parts.Skip(1).ToArray());
           }
         }
       }
@@ -287,6 +339,8 @@ public class VideoPlayerServiceTests {
     Assert.NotNull(indexer);
     indexer!.SetValue(tracker, trackedEntry, [executableKey]);
   }
+
+  private sealed record LaunchRecord(int ProcessId, string[] Arguments);
 
   private sealed class FakeSettingsRepository : ISettingsRepository {
     private readonly Dictionary<string, string> _settings;
@@ -342,6 +396,8 @@ public class VideoPlayerServiceTests {
     }
   }
 }
+
+
 
 
 

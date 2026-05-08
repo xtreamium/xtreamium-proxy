@@ -11,12 +11,13 @@ public class VideoPlayerService(
   : IVideoPlayerService {
   private static readonly ConcurrentDictionary<string, TrackedPlayerProcess> ActivePlayersByExecutable =
     new(StringComparer.OrdinalIgnoreCase);
+
   private static readonly SemaphoreSlim PlayerLaunchLock = new(1, 1);
 
-  public async Task<bool> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
+  public async Task<PlayerResult> PlayFromUrl(string url, CancellationToken cancellationToken = default) {
     if (string.IsNullOrWhiteSpace(url)) {
       logger.LogWarning("PlayFromUrl called with empty URL");
-      return false;
+      return PlayerResult.ClientFail("URL must not be empty.");
     }
 
     try {
@@ -34,24 +35,26 @@ public class VideoPlayerService(
 
         if (!File.Exists(pathOrUrl)) {
           logger.LogError("Local file not found: {Path}", pathOrUrl);
-          return false;
+          return PlayerResult.ClientFail($"Local file not found: {pathOrUrl}");
         }
 
         logger.LogDebug("Playing local file: {Path}", pathOrUrl);
       }
 
       var exe = await settingsRepository.GetSettingAsync("MediaPlayerPath");
-      var args = SanitizeMpvArguments(
+      var playerArguments = BuildPlayerArguments(
         await settingsRepository.GetSettingAsync("MediaPlayerArguments"),
         pathOrUrl);
 
       if (string.IsNullOrWhiteSpace(exe)) {
         logger.LogError("Video player executable not configured");
-        return false;
+        return PlayerResult.ServerFail(
+          "Video player executable is not configured. Please set MediaPlayerPath in settings.");
       }
 
       if (!File.Exists(exe)) {
         logger.LogWarning("Configured video player executable not found: {Path}", exe);
+        return PlayerResult.ServerFail($"Video player executable not found at path: {exe}");
       }
 
       var executableKey = NormalizeExecutablePath(exe);
@@ -62,31 +65,71 @@ public class VideoPlayerService(
 
         var psi = new ProcessStartInfo {
           FileName = exe,
-          Arguments = args,
           CreateNoWindow = true,
-          UseShellExecute = false
+          UseShellExecute = false,
+          RedirectStandardError = true,
+          RedirectStandardOutput = true
         };
 
-        logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName, psi.Arguments);
-
-        using var process = Process.Start(psi);
-        if (process != null) {
-          ActivePlayersByExecutable[executableKey] =
-            new TrackedPlayerProcess(process.Id, process.StartTime.ToUniversalTime());
-          return true;
+        foreach (var argument in playerArguments) {
+          psi.ArgumentList.Add(argument);
         }
 
-        logger.LogError("Failed to start video player process");
-        return false;
+        logger.LogDebug("Starting player: {FileName} {Arguments}", psi.FileName,
+          FormatArgumentsForLog(psi.ArgumentList));
+
+        var process = Process.Start(psi);
+        if (process == null) {
+          logger.LogError("Failed to start video player process");
+          return PlayerResult.ServerFail("Failed to start video player process.");
+        }
+
+        var stderrLines = new ConcurrentBag<string>();
+        process.ErrorDataReceived += (_, e) => {
+          if (string.IsNullOrEmpty(e.Data)) {
+            return;
+          }
+
+          stderrLines.Add(e.Data);
+          logger.LogWarning("Player stderr: {Message}", e.Data);
+        };
+        process.OutputDataReceived += (_, e) => {
+          if (!string.IsNullOrEmpty(e.Data)) {
+            logger.LogDebug("Player stdout: {Message}", e.Data);
+          }
+        };
+        process.BeginErrorReadLine();
+        process.BeginOutputReadLine();
+
+        // Wait briefly to detect an immediate crash (e.g. bad arguments, missing display, codec error).
+        var exited = await Task.Run(() => process.WaitForExit(500), cancellationToken);
+        if (exited && process.ExitCode != 0) {
+          var stderr = string.Join(" | ", stderrLines);
+          var detail = string.IsNullOrWhiteSpace(stderr)
+            ? $"exit code {process.ExitCode}"
+            : stderr;
+          logger.LogError("Player exited immediately with code {ExitCode}: {Detail}", process.ExitCode, detail);
+          process.Dispose();
+          return PlayerResult.ServerFail($"Player exited immediately: {detail}");
+        }
+
+        ActivePlayersByExecutable[executableKey] =
+          new TrackedPlayerProcess(process.Id, process.StartTime.ToUniversalTime());
+        // Hand off ownership — do not dispose here; the process runs independently.
+        _ = process.Handle;
+        return PlayerResult.Ok();
+      } catch (Exception ex) {
+        logger.LogError(ex, "Failed to start video player process");
+        return PlayerResult.ServerFail($"Failed to start video player: {ex.Message}");
       } finally {
         PlayerLaunchLock.Release();
       }
     } catch (OperationCanceledException) {
       logger.LogInformation("PlayFromUrl canceled");
-      return false;
+      return PlayerResult.ServerFail("Request was canceled.");
     } catch (Exception ex) {
       logger.LogError(ex, "Error while starting video player");
-      return false;
+      return PlayerResult.ServerFail($"Unexpected error while starting video player: {ex.Message}");
     }
   }
 
@@ -96,13 +139,13 @@ public class VideoPlayerService(
   /// </summary>
   /// <param name="cancellationToken"></param>
   /// <returns></returns>
-  public async Task<bool> OpenRecordingsFolderAsync(CancellationToken cancellationToken = default) {
+  public async Task<PlayerResult> OpenRecordingsFolderAsync(CancellationToken cancellationToken = default) {
     try {
       var recordingsPath = await settingsRepository.GetSettingAsync("RecordingsPath");
 
       if (string.IsNullOrWhiteSpace(recordingsPath)) {
         logger.LogError("Recordings path not configured");
-        return false;
+        return PlayerResult.ServerFail("Recordings path is not configured. Please set RecordingsPath in settings.");
       }
 
       if (!Directory.Exists(recordingsPath)) {
@@ -112,7 +155,7 @@ public class VideoPlayerService(
           logger.LogInformation("Created recordings directory: {Path}", recordingsPath);
         } catch (Exception ex) {
           logger.LogError(ex, "Failed to create recordings directory: {Path}", recordingsPath);
-          return false;
+          return PlayerResult.ServerFail($"Recordings directory does not exist and could not be created: {ex.Message}");
         }
       }
 
@@ -131,7 +174,7 @@ public class VideoPlayerService(
         psi.UseShellExecute = false;
       } else {
         logger.LogError("Unsupported operating system");
-        return false;
+        return PlayerResult.ServerFail("Unsupported operating system.");
       }
 
       psi.CreateNoWindow = true;
@@ -141,17 +184,17 @@ public class VideoPlayerService(
 
       using var process = Process.Start(psi);
       if (process != null) {
-        return true;
+        return PlayerResult.Ok();
       }
 
       logger.LogError("Failed to start file browser process");
-      return false;
+      return PlayerResult.ServerFail("Failed to open file browser process.");
     } catch (OperationCanceledException) {
       logger.LogInformation("OpenRecordingsFolderAsync canceled");
-      return false;
+      return PlayerResult.ServerFail("Request was canceled.");
     } catch (Exception ex) {
       logger.LogError(ex, "Error while opening recordings folder");
-      return false;
+      return PlayerResult.ServerFail($"Unexpected error while opening recordings folder: {ex.Message}");
     }
   }
 
@@ -179,24 +222,83 @@ public class VideoPlayerService(
   /// <summary>
   /// Validate and sanitize MPV arguments template
   /// </summary>
-  private static string SanitizeMpvArguments(string argumentTemplate, string url) {
+  private static IReadOnlyList<string> BuildPlayerArguments(string argumentTemplate, string url) {
     if (string.IsNullOrWhiteSpace(argumentTemplate)) {
-      return QuoteArgument(url);
+      return [url];
     }
 
-    // Check for potentially dangerous argument patterns
-    var dangerous = new[] {"--input-terminal", "--terminal", "--script", "--load-scripts"};
-    if (dangerous.Any(d => argumentTemplate.Contains(d, StringComparison.OrdinalIgnoreCase))) {
+    var parsedArguments = SplitArguments(argumentTemplate);
+    if (parsedArguments.Any(IsDangerousPlayerArgument)) {
       throw new SecurityException("Potentially dangerous MPV arguments detected");
     }
 
-    // Replace URL placeholder safely
-    if (argumentTemplate.Contains("{{URL}}")) {
-      return argumentTemplate.Replace("{{URL}}", QuoteArgument(url));
+    var hasUrlPlaceholder = false;
+    for (var i = 0; i < parsedArguments.Count; i++) {
+      if (!parsedArguments[i].Contains("{{URL}}", StringComparison.Ordinal)) {
+        continue;
+      }
+
+      parsedArguments[i] = parsedArguments[i].Replace("{{URL}}", url, StringComparison.Ordinal);
+      hasUrlPlaceholder = true;
     }
 
-    // If no placeholder, append URL safely
-    return $"{argumentTemplate} {QuoteArgument(url)}";
+    if (!hasUrlPlaceholder) {
+      parsedArguments.Add(url);
+    }
+
+    return parsedArguments;
+  }
+
+  private static List<string> SplitArguments(string argumentTemplate) {
+    var arguments = new List<string>();
+    var current = new System.Text.StringBuilder();
+    char? quoteCharacter = null;
+
+    foreach (var character in argumentTemplate) {
+      if (quoteCharacter.HasValue) {
+        if (character == quoteCharacter.Value) {
+          quoteCharacter = null;
+        } else {
+          current.Append(character);
+        }
+
+        continue;
+      }
+
+      if (character is '"' or '\'') {
+        quoteCharacter = character;
+        continue;
+      }
+
+      if (char.IsWhiteSpace(character)) {
+        if (current.Length == 0) {
+          continue;
+        }
+
+        arguments.Add(current.ToString());
+        current.Clear();
+        continue;
+      }
+
+      current.Append(character);
+    }
+
+    if (current.Length > 0) {
+      arguments.Add(current.ToString());
+    }
+
+    return arguments;
+  }
+
+  private static bool IsDangerousPlayerArgument(string argument) {
+    var dangerous = new[] {"--input-terminal", "--terminal", "--script", "--load-scripts"};
+    return dangerous.Any(d =>
+      argument.Equals(d, StringComparison.OrdinalIgnoreCase) ||
+      argument.StartsWith($"{d}=", StringComparison.OrdinalIgnoreCase));
+  }
+
+  private static string FormatArgumentsForLog(IEnumerable<string> arguments) {
+    return string.Join(" ", arguments.Select(QuoteArgument));
   }
 
   private void StopTrackedPlayer(string executableKey) {
