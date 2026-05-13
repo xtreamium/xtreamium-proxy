@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Web;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +11,7 @@ using Xtreamium.Proxy.Services.Jobs;
 
 namespace Xtreamium.Proxy.Endpoints;
 
-public static class RecordEndpoints {
+public static class RecordingsEndpoint {
   public static void RegisterRecordEndpoints(this IEndpointRouteBuilder app) {
     var endpoints = app.MapGroup("/recordings");
 

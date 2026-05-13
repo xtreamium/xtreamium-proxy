@@ -60,6 +60,48 @@ jobs:
         nfpm --version
       shell: bash
 
+    - name: Stage Linux release artifacts
+      run: |
+        # User systemd unit — shipped at /usr/lib/systemd/user/xtreamium-proxy.service
+        # by the distro packages, also bundled in the tarball for AUR consumption.
+        cat > ./publish/linux/xtreamium-proxy.service << 'EOF'
+        [Unit]
+        Description=Xtreamium Proxy Service
+        Documentation=https://github.com/xtreamium/xtreamium-proxy
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        Type=notify
+        ExecStart=/usr/bin/xtreamium-proxy
+        Restart=on-failure
+        RestartSec=5
+        Environment=ASPNETCORE_ENVIRONMENT=Production
+        Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+        [Install]
+        WantedBy=default.target
+        EOF
+
+        # Minimal README bundled into the tarball for AUR's makepkg source.
+        cat > ./publish/linux/README.md << 'EOF'
+        # Xtreamium Proxy
+
+        Per-user systemd service. Install via your distro package
+        (`pacman -S xtreamium-proxy`, `apt install ./xtreamium-proxy*.deb`,
+        `rpm -i xtreamium-proxy*.rpm`), then:
+
+        ```
+        systemctl --user enable --now xtreamium-proxy
+        ```
+
+        Config is created at `~/.config/xtreamium-proxy/appsettings.json` on first
+        run. A reference template is installed to
+        `/usr/share/xtreamium-proxy/appsettings.json.example`.
+        EOF
+
+        chmod +x ./publish/linux/xtreamium-proxy
+
     - name: Build Distribution Packages
       run: |
         cd scripts/packaging
@@ -67,219 +109,6 @@ jobs:
         ./build-packages.sh
       env:
         VERSION: ${{ github.ref_name }}
-
-    - name: Create Linux Installer
-      run: |
-        # Create systemd service file
-        cat > ./publish/linux/xtreamium-proxy.service << 'EOF'
-        [Unit]
-        Description=Xtreamium Proxy Service
-        After=network.target
-
-        [Service]
-        Type=notify
-        ExecStart=/opt/xtreamium-proxy/xtreamium-proxy
-        Restart=always
-        RestartSec=5
-        User=xtreamium
-        Group=xtreamium
-        WorkingDirectory=/opt/xtreamium-proxy
-        Environment=ASPNETCORE_ENVIRONMENT=Production
-        Environment=DOTNET_ROOT=/opt/xtreamium-proxy
-
-        # Security settings
-        NoNewPrivileges=true
-        ProtectSystem=strict
-        ProtectHome=true
-        ReadWritePaths=/opt/xtreamium-proxy/data
-        ReadWritePaths=/var/log/xtreamium-proxy
-
-        [Install]
-        WantedBy=multi-user.target
-        EOF
-
-        # Create user service file for autostart
-        cat > ./publish/linux/xtreamium-proxy-user.service << 'EOF'
-        [Unit]
-        Description=Xtreamium Proxy Service (User)
-        After=network.target
-
-        [Service]
-        Type=notify
-        ExecStart=%h/.local/opt/xtreamium-proxy/xtreamium-proxy
-        Restart=always
-        RestartSec=5
-        WorkingDirectory=%h/.local/opt/xtreamium-proxy
-        Environment=ASPNETCORE_ENVIRONMENT=Production
-        Environment=DOTNET_ROOT=%h/.local/opt/xtreamium-proxy
-
-        [Install]
-        WantedBy=default.target
-        EOF
-
-        # Create install script
-        cat > ./publish/linux/install.sh << 'EOF'
-        #!/bin/bash
-        set -e
-
-        INSTALL_DIR="/opt/xtreamium-proxy"
-        USER_INSTALL_DIR="$HOME/.local/opt/xtreamium-proxy"
-        SERVICE_NAME="xtreamium-proxy"
-        USER_SERVICE_NAME="xtreamium-proxy-user"
-
-        echo "Xtreamium Proxy Installer"
-        echo "========================"
-        echo
-        echo "Choose installation type:"
-        echo "1) System-wide service (requires sudo)"
-        echo "2) User service (runs when user logs in)"
-        read -p "Enter choice [1-2]: " choice
-
-        case $choice in
-            1)
-                echo "Installing system-wide service..."
-
-                # Create user and group
-                sudo useradd -r -s /bin/false -d $INSTALL_DIR xtreamium || true
-
-                # Create directory and copy files
-                sudo mkdir -p $INSTALL_DIR
-                sudo cp xtreamium-proxy $INSTALL_DIR/
-                sudo cp -r * $INSTALL_DIR/ 2>/dev/null || true
-                sudo chown -R xtreamium:xtreamium $INSTALL_DIR
-                sudo chmod +x $INSTALL_DIR/xtreamium-proxy
-
-                # Create log directory
-                sudo mkdir -p /var/log/xtreamium-proxy
-                sudo chown xtreamium:xtreamium /var/log/xtreamium-proxy
-
-                # Install and enable service
-                sudo cp xtreamium-proxy.service /etc/systemd/system/
-                sudo systemctl daemon-reload
-                sudo systemctl enable $SERVICE_NAME
-                sudo systemctl start $SERVICE_NAME
-
-                echo "System service installed and started successfully!"
-                echo "Use 'sudo systemctl status $SERVICE_NAME' to check status"
-                ;;
-            2)
-                echo "Installing user service..."
-
-                # Stop existing service if running
-                systemctl --user stop $USER_SERVICE_NAME || true
-                systemctl --user disable $USER_SERVICE_NAME || true
-
-                # Create user directory and copy files
-                mkdir -p $USER_INSTALL_DIR
-                cp xtreamium-proxy $USER_INSTALL_DIR/
-                cp -r * $USER_INSTALL_DIR/ 2>/dev/null || true
-                chmod +x $USER_INSTALL_DIR/xtreamium-proxy
-
-                # Create systemd user directory
-                mkdir -p ~/.config/systemd/user
-
-                # Install and enable user service
-                cp xtreamium-proxy-user.service ~/.config/systemd/user/
-                systemctl --user daemon-reload
-                systemctl --user enable $USER_SERVICE_NAME
-                systemctl --user start $USER_SERVICE_NAME
-
-                # Enable lingering so service starts on boot
-                sudo loginctl enable-linger $USER
-
-                echo "User service installed and started successfully!"
-                echo "Use 'systemctl --user status $USER_SERVICE_NAME' to check status"
-                ;;
-            *)
-                echo "Invalid choice. Exiting."
-                exit 1
-                ;;
-        esac
-        EOF
-
-        # Create uninstall script
-        cat > ./publish/linux/uninstall.sh << 'EOF'
-        #!/bin/bash
-
-        SERVICE_NAME="xtreamium-proxy"
-        USER_SERVICE_NAME="xtreamium-proxy-user"
-        INSTALL_DIR="/opt/xtreamium-proxy"
-        USER_INSTALL_DIR="$HOME/.local/opt/xtreamium-proxy"
-
-        echo "Xtreamium Proxy Uninstaller"
-        echo "==========================="
-        echo
-        echo "Choose uninstall type:"
-        echo "1) System-wide service"
-        echo "2) User service"
-        read -p "Enter choice [1-2]: " choice
-
-        case $choice in
-            1)
-                echo "Uninstalling system service..."
-                sudo systemctl stop $SERVICE_NAME || true
-                sudo systemctl disable $SERVICE_NAME || true
-                sudo rm -f /etc/systemd/system/$SERVICE_NAME.service
-                sudo systemctl daemon-reload
-                sudo rm -rf $INSTALL_DIR
-                sudo userdel xtreamium || true
-                sudo rm -rf /var/log/xtreamium-proxy
-                echo "System service uninstalled successfully!"
-                ;;
-            2)
-                echo "Uninstalling user service..."
-                systemctl --user stop $USER_SERVICE_NAME || true
-                systemctl --user disable $USER_SERVICE_NAME || true
-                rm -f ~/.config/systemd/user/$USER_SERVICE_NAME.service
-                systemctl --user daemon-reload
-                rm -rf $USER_INSTALL_DIR
-                echo "User service uninstalled successfully!"
-                ;;
-            *)
-                echo "Invalid choice. Exiting."
-                exit 1
-                ;;
-        esac
-        EOF
-
-        # Create README
-        cat > ./publish/linux/README.md << 'EOF'
-        # Xtreamium Proxy Linux Service
-
-        ## Installation
-        1. Extract the package
-        2. Run `chmod +x install.sh`
-        3. Run `./install.sh`
-        4. Choose installation type:
-           - System-wide: Runs as system service (requires sudo)
-           - User: Runs when user logs in (no sudo required)
-
-        ## Uninstallation
-        1. Run `chmod +x uninstall.sh`
-        2. Run `./uninstall.sh`
-
-        ## Manual Service Management
-
-        ### System Service
-        - Status: `sudo systemctl status xtreamium-proxy`
-        - Start: `sudo systemctl start xtreamium-proxy`
-        - Stop: `sudo systemctl stop xtreamium-proxy`
-        - Logs: `sudo journalctl -u xtreamium-proxy -f`
-
-        ### User Service
-        - Status: `systemctl --user status xtreamium-proxy-user`
-        - Start: `systemctl --user start xtreamium-proxy-user`
-        - Stop: `systemctl --user stop xtreamium-proxy-user`
-        - Logs: `journalctl --user -u xtreamium-proxy-user -f`
-
-        ## Configuration
-        Edit appsettings.json in the installation directory to configure the application.
-        EOF
-
-        # Make scripts executable
-        chmod +x ./publish/linux/install.sh
-        chmod +x ./publish/linux/uninstall.sh
-        chmod +x ./publish/linux/xtreamium-proxy
 
     - name: Create Linux TAR package
       run: |

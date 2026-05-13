@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>

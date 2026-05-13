@@ -1,5 +1,10 @@
 # nfpm configuration for xtreamium-proxy
 # https://nfpm.goreleaser.com/
+#
+# This packages xtreamium-proxy as a per-user systemd service. The binary lives
+# in /usr/bin so any user on the system can run it, but the service identity is
+# always the desktop user (via `systemctl --user`). No system user is created,
+# no files are written under /etc, /opt, or /var.
 
 name: "xtreamium-proxy"
 arch: "amd64"
@@ -10,101 +15,52 @@ priority: "optional"
 maintainer: "Xtreamium <support@xtreamium.com>"
 description: |
   Xtreamium Proxy - A streaming proxy service
-  A modern streaming proxy built with .NET 9
+  A modern streaming proxy built with .NET 9, run as a per-user systemd service.
 vendor: "Xtreamium"
 homepage: "https://github.com/xtreamium/xtreamium-proxy"
 license: "MIT"
 
-# Dependencies
 depends:
   - ffmpeg
 
-# Recommended packages
 recommends:
   - mpv
 
-# Contents to package
 contents:
-  # Main application binary
   - src: "../../publish/linux/xtreamium-proxy"
-    dst: "/opt/xtreamium-proxy/xtreamium-proxy"
+    dst: "/usr/bin/xtreamium-proxy"
     file_info:
       mode: 0755
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
 
-  # Configuration file
   - src: "../../publish/linux/appsettings.json"
-    dst: "/etc/xtreamium-proxy/appsettings.json"
-    type: "config|noreplace"
-    file_info:
-      mode: 0644
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
-
-  # Global configuration
-  - src: "../../publish/linux/global.json"
-    dst: "/opt/xtreamium-proxy/global.json"
-    file_info:
-      mode: 0644
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
-
-  # Systemd service file
-  - src: "./systemd/xtreamium-proxy.service"
-    dst: "/usr/lib/systemd/system/xtreamium-proxy.service"
-    type: "config"
+    dst: "/usr/share/xtreamium-proxy/appsettings.json.example"
     file_info:
       mode: 0644
 
-  # Create necessary directories
-  - dst: "/var/lib/xtreamium-proxy"
-    type: "dir"
+  - src: "../../publish/linux/xtreamium-proxy.service"
+    dst: "/usr/lib/systemd/user/xtreamium-proxy.service"
     file_info:
-      mode: 0755
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
+      mode: 0644
 
-  - dst: "/var/log/xtreamium-proxy"
-    type: "dir"
-    file_info:
-      mode: 0755
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
-
-  - dst: "/var/lib/xtreamium-proxy/recordings"
-    type: "dir"
-    file_info:
-      mode: 0755
-      owner: xtreamium-proxy
-      group: xtreamium-proxy
-
-# Scripts
 scripts:
-  preinstall: ./scripts/preinstall.sh
   postinstall: ./scripts/postinstall.sh
-  preremove: ./scripts/preremove.sh
   postremove: ./scripts/postremove.sh
 
-# Overrides for specific package formats
 overrides:
   deb:
     depends:
       - ffmpeg
     recommends:
       - mpv
-    
   rpm:
     depends:
       - ffmpeg
     recommends:
       - mpv
-    
   archlinux:
     depends:
       - ffmpeg
 
-# Package metadata
 rpm:
   group: "Applications/Internet"
   summary: "Xtreamium Proxy - A streaming proxy service"

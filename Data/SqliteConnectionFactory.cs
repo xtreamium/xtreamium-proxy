@@ -1,5 +1,6 @@
 using System.Data;
 using Microsoft.Data.Sqlite;
+using Xtreamium.Proxy.Configuration;
 
 namespace Xtreamium.Proxy.Data;
 
@@ -15,9 +16,7 @@ public class SqliteConnectionFactory : IDbConnectionFactory {
   private readonly string _connectionString;
 
   public SqliteConnectionFactory() {
-    var dbPath = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-      "xtreamium");
+    var dbPath = AppPaths.AppDataDirectory;
 
     if (!Directory.Exists(dbPath)) {
       Directory.CreateDirectory(dbPath);

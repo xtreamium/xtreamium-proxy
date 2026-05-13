@@ -15,22 +15,50 @@ if (args.Contains("--version")) {
   return;
 }
 
+// Refuse to run as root on Linux — this is a per-user service and must never
+// touch files as uid 0.
+if (OperatingSystem.IsLinux() && Environment.UserName == "root") {
+  Console.Error.WriteLine("xtreamium-proxy must not be run as root. Use 'systemctl --user' or run as your desktop user.");
+  return;
+}
+
 // Handle Velopack events first (Windows only)
 if (OperatingSystem.IsWindows()) {
   UpdateManager.HandleVelopackEvents();
 }
 
+Directory.CreateDirectory(AppPaths.AppDataDirectory);
+Directory.CreateDirectory(AppPaths.LogsDirectory);
+
+// Seed appsettings.json into the user config dir on first run, so the user has
+// a writable copy they can tweak. Source order: a sibling appsettings.json next
+// to the binary (dev / publish output), then /usr/share/xtreamium-proxy/appsettings.json.example
+// (system package install).
+if (!File.Exists(AppPaths.AppSettingsPath)) {
+  var seedCandidates = new[] {
+    Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
+    "/usr/share/xtreamium-proxy/appsettings.json.example",
+  };
+  foreach (var seed in seedCandidates) {
+    if (File.Exists(seed)) {
+      File.Copy(seed, AppPaths.AppSettingsPath);
+      break;
+    }
+  }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure log directory in the application data folder
-var logDirectory = Path.Combine(
-  Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-  "xtreamium",
-  "logs");
-Directory.CreateDirectory(logDirectory);
+// Load appsettings.json from the user config dir, not the binary's working directory.
+// This is what lets us ship the binary in /usr/bin and keep all user state in $HOME.
+builder.Configuration.Sources.Clear();
+builder.Configuration
+  .AddJsonFile(AppPaths.AppSettingsPath, optional: true, reloadOnChange: true)
+  .AddEnvironmentVariables()
+  .AddCommandLine(args);
 
 // Set the log path for Serilog
-builder.Configuration["Serilog:WriteTo:1:Args:path"] = Path.Combine(logDirectory, "applog-.txt");
+builder.Configuration["Serilog:WriteTo:1:Args:path"] = Path.Combine(AppPaths.LogsDirectory, "applog-.txt");
 
 builder.Services.Configure<AppConfiguration>(builder.Configuration.GetSection(AppConfiguration.SectionName));
 builder.Services.Configure<CorsConfiguration>(builder.Configuration.GetSection(CorsConfiguration.SectionName));
@@ -66,6 +94,10 @@ builder.Services.AddCors(options => {
       .AllowAnyMethod()
       .AllowCredentials();
   });
+});
+
+builder.Services.AddHttpClient("StreamPassthrough", c => {
+  c.Timeout = Timeout.InfiniteTimeSpan;
 });
 
 builder.Services.AddScoped<IVideoPlayerService, VideoPlayerService>();
@@ -106,6 +138,7 @@ app.MapGet("/ping", () => new {Ping = "pong"});
 app.RegisterBrowseEndpoints();
 app.RegisterVersionEndpoints();
 app.RegisterPlayerEndpoints();
+app.RegisterStreamEndpoints();
 app.RegisterRecordEndpoints();
 app.RegisterSettingsEndpoints();
 app.RegisterLogEndpoints();

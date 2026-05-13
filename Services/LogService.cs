@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Xtreamium.Proxy.Configuration;
 
 namespace Xtreamium.Proxy.Services;
 
@@ -19,10 +20,7 @@ public class LogService : ILogService {
 
   public LogService(ILogger<LogService> logger) {
     _logger = logger;
-    _logDirectory = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-      "xtreamium",
-      "logs");
+    _logDirectory = AppPaths.LogsDirectory;
   }
 
   public string GetLogDirectory() => _logDirectory;

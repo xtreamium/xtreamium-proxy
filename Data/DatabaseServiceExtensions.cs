@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.VisualBasic.FileIO;
+using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Data.Repositories;
 
 namespace Xtreamium.Proxy.Data;
@@ -43,10 +44,7 @@ public static class DatabaseServiceExtensions {
   /// Get the configuration database file path
   /// </summary>
   public static string GetConfigurationDbFilePath() {
-    var dbFile = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-      "xtreamium",
-      GetConfigurationDbFileName());
+    var dbFile = Path.Combine(AppPaths.AppDataDirectory, GetConfigurationDbFileName());
 
     Directory.CreateDirectory(Path.GetDirectoryName(dbFile)!);
 
