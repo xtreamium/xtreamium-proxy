@@ -123,7 +123,7 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Initialize Quartz tables if needed
+// Initialise Quartz tables if needed
 var dbFile = connectionString.Replace("Data Source=", "");
 await app.InitializeConfigurationDbAsync(dbFile);
 
@@ -132,8 +132,8 @@ app.MigrateDatabase();
 app.UseCors("WebFrontend");
 
 app.MapHub<ProxyStatusHub>("/hubs/proxyStatus");
-app.MapGet("/", () => "Hello, Sailor!");
-app.MapGet("/ping", () => new {Ping = "pong"});
+app.MapGet("/", () => "Hello, asdsadsSailor!");
+app.MapGet("/ping", () => new {Ping = "pongpingpong"});
 
 app.RegisterBrowseEndpoints();
 app.RegisterVersionEndpoints();
