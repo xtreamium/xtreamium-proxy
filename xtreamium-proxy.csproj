@@ -9,7 +9,7 @@
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.4.46</Version>
+    <Version>1.4.47</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationIcon>scripts/packaging/branding/app-icon.ico</ApplicationIcon>
     <Product>Xtreamium Proxy</Product>
