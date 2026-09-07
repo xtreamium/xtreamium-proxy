@@ -13,25 +13,35 @@ public class RecordingService : IRecordingService {
   /// </summary>
   private static readonly TimeSpan ShutdownGrace = TimeSpan.FromSeconds(30);
 
+  /// <summary>
+  /// ffmpeg reports progress far faster than anything downstream needs. One tick a second is
+  /// ample to drive a progress bar and keeps the push channel quiet.
+  /// </summary>
+  private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(1);
+
   private readonly ILogger<RecordingService> _logger;
   private readonly IRecordingRepository _recordingRepository;
   private readonly ISettingsRepository _settingsRepository;
   private readonly ISchedulerFactory _schedulerFactory;
+  private readonly IRecordingNotifier _notifier;
 
   public RecordingService(
     ILogger<RecordingService> logger,
     IRecordingRepository recordingRepository,
     ISettingsRepository settingsRepository,
-    ISchedulerFactory schedulerFactory) {
+    ISchedulerFactory schedulerFactory,
+    IRecordingNotifier notifier) {
     _logger = logger;
     _recordingRepository = recordingRepository;
     _settingsRepository = settingsRepository;
     _schedulerFactory = schedulerFactory;
+    _notifier = notifier;
   }
 
   public async Task<string> RecordShow(
     string url, DateTimeOffset startTime, DateTimeOffset endTime,
-    Func<string, Task>? onOutputFileCreated = null, CancellationToken cancellationToken = default) {
+    Func<string, Task>? onOutputFileCreated = null, Action<TimeSpan>? onProgress = null,
+    CancellationToken cancellationToken = default) {
     _logger.LogInformation("Recording {Url} scheduled for {StartTime}", url, startTime);
 
     // Get recordings path from database settings
@@ -67,6 +77,10 @@ public class RecordingService : IRecordingService {
     // Flag to track if cancellation was external (user requested) vs duration-based (natural end)
     var wasExternallyCancelled = false;
 
+    // Throttled here rather than at the consumer: the cadence is a property of ffmpeg's output,
+    // not of whatever happens to be listening.
+    var lastProgressAt = DateTimeOffset.MinValue;
+
     // Cancels the overrun timer below as soon as ffmpeg is done with it
     using var overrunTimer = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -92,6 +106,22 @@ public class RecordingService : IRecordingService {
           // Hand ffmpeg the duration so it ends the recording itself and exits cleanly.
           // The timer below is only a backstop for when it overruns.
           .WithDuration(duration))
+        // Reads the media time out of ffmpeg's stderr stats. Note ffmpeg only emits these while
+        // it is actually encoding - a stream it cannot pull produces silence rather than zeroes,
+        // which is exactly the signal the UI uses to show a capture as stalled.
+        .NotifyOnProgress(captured => {
+          if (onProgress is null) {
+            return;
+          }
+
+          var now = DateTimeOffset.UtcNow;
+          if (now - lastProgressAt < ProgressInterval) {
+            return;
+          }
+
+          lastProgressAt = now;
+          onProgress(captured);
+        })
         .CancellableThrough(out var cancel, (int)ShutdownGrace.TotalMilliseconds);
 
       _logger.LogDebug("Recording {Url} with args {Args}", url, task.Arguments);
@@ -145,6 +175,10 @@ public class RecordingService : IRecordingService {
       }
 
       await _recordingRepository.UpdateAsync(recording);
+      // A no-op today: this runs before app.Run(), so there is no client connected to hear it.
+      // Kept so the omission does not become a silent bug if this is ever called at runtime -
+      // the web picks these up instead by invalidating whenever the hub (re)connects.
+      await _notifier.RecordingChangedAsync(recording, "status");
       _logger.LogWarning("Recording '{Title}' was interrupted by a previous run - marked {Status}",
         recording.Title, recording.Status);
     }
@@ -217,6 +251,7 @@ public class RecordingService : IRecordingService {
       }
 
       _logger.LogInformation("Successfully deleted recording with ID {RecordingId}", recordingId);
+      await _notifier.RecordingChangedAsync(recording, "deleted");
       return true;
     } catch (Exception e) {
       _logger.LogError(e, "Error deleting recording with ID {RecordingId}", recordingId);

@@ -10,6 +10,7 @@ using Xtreamium.Proxy.Hubs;
 using Xtreamium.Proxy.Models;
 using Xtreamium.Proxy.Services;
 using Xtreamium.Proxy.Services.Jobs;
+using System.Text.Json;
 
 // Handle --version flag
 if (args.Contains("--version")) {
@@ -130,9 +131,11 @@ builder.Services.AddHttpClient("StreamPassthrough", c => {
 builder.Services.AddScoped<IVideoPlayerService, VideoPlayerService>();
 builder.Services.AddScoped<IRecordingService, RecordingService>();
 builder.Services.AddScoped<ILogService, LogService>();
+builder.Services.AddScoped<IRecordingBounds, RecordingBounds>();
 
 // Register validators
 builder.Services.AddRecordVmValidator();
+builder.Services.AddUpdateRecordingVmValidator();
 builder.Services.AddSettingsVmValidator();
 
 // Register update manager (Windows only)
@@ -140,7 +143,13 @@ if (OperatingSystem.IsWindows()) {
   builder.Services.AddSingleton<UpdateManager>();
 }
 
-builder.Services.AddSignalR();
+// Casing is pinned rather than inherited so hub payloads match what the REST endpoints
+// already produce, and the web can share one set of models across both.
+builder.Services.AddSignalR()
+  .AddJsonProtocol(options =>
+    options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
+
+builder.Services.AddSingleton<IRecordingNotifier, RecordingNotifier>();
 
 // Configure server URLs using AppConfiguration (from appsettings.json)
 var appConfig = builder.Configuration.GetSection(AppConfiguration.SectionName).Get<AppConfiguration>()

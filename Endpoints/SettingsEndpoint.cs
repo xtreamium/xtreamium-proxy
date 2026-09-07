@@ -15,7 +15,9 @@ public static class SettingsEndpoint {
         MediaPlayerPath = settings.GetValueOrDefault("MediaPlayerPath", ""),
         MediaPlayerArguments = settings.GetValueOrDefault("MediaPlayerArguments", ""),
         RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
-        Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963
+        Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963,
+        MinDurationMinutes = int.TryParse(settings.GetValueOrDefault("MinDurationMinutes"), out var min) ? min : null,
+        MaxDurationMinutes = int.TryParse(settings.GetValueOrDefault("MaxDurationMinutes"), out var max) ? max : null
       };
       return Results.Ok(vm);
     });
@@ -39,6 +41,16 @@ public static class SettingsEndpoint {
           { "RecordingsPath", request.RecordingsPath },
           { "Port", request.Port.ToString() }
         };
+
+        // Written only when supplied. Every key in this dictionary is persisted, so adding these
+        // unconditionally would let a client that has never heard of them wipe them out.
+        if (request.MinDurationMinutes.HasValue) {
+          settings["MinDurationMinutes"] = request.MinDurationMinutes.Value.ToString();
+        }
+
+        if (request.MaxDurationMinutes.HasValue) {
+          settings["MaxDurationMinutes"] = request.MaxDurationMinutes.Value.ToString();
+        }
 
         logger.LogInformation("Updating settings: {Settings}", string.Join(", ", settings.Select(s => $"{s.Key}={s.Value}")));
         

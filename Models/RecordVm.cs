@@ -1,6 +1,4 @@
 using FluentValidation;
-using Microsoft.Extensions.Options;
-using Xtreamium.Proxy.Configuration;
 using Xtreamium.Proxy.Services;
 
 namespace Xtreamium.Proxy.Models;
@@ -13,21 +11,29 @@ internal sealed class RecordVm {
 }
 
 internal sealed class RecordVmValidator : AbstractValidator<RecordVm> {
-  public RecordVmValidator(IOptions<AppConfiguration> config) {
-    var recordingsConfig = config.Value.Recordings;
-
+  public RecordVmValidator(IRecordingBounds bounds) {
     RuleFor(x => x.Url).NotEmpty().Must(x => x.IsValidUrl());
     //we shouldn't care if the start time is in the past
     //as we may want to start recording immediately
     // RuleFor(x => x.StartTime).NotNull().GreaterThan(DateTimeOffset.Now);
-    RuleFor(x => x.EndTime).NotNull()
-      .GreaterThan(DateTimeOffset.Now.AddMinutes(5))
-      .WithMessage("End time must be at least 5 minutes in the future.");
 
-    RuleFor(x => x.EndTime.Subtract(x.StartTime).TotalMinutes).NotNull()
-      .InclusiveBetween(recordingsConfig.MinDurationMinutes, recordingsConfig.MaxDurationMinutes)
-      .WithMessage(
-        $"Duration must be between {recordingsConfig.MinDurationMinutes} and {recordingsConfig.MaxDurationMinutes} minutes");
+    // Only a sanity check. How short a recording may be is MinDurationMinutes' job alone - this
+    // rule used to demand five minutes' notice, which silently made any shorter minimum
+    // unreachable no matter what it was set to.
+    RuleFor(x => x.EndTime).NotNull()
+      .GreaterThan(DateTimeOffset.Now)
+      .WithMessage("End time must be in the future.");
+
+    // CustomAsync rather than MustAsync: the message has to name the bounds that were actually
+    // applied, and WithMessage cannot await to find out what they are.
+    RuleFor(x => x).CustomAsync(async (vm, ctx, ct) => {
+      var (min, max) = await bounds.GetAsync(ct);
+      var minutes = vm.EndTime.Subtract(vm.StartTime).TotalMinutes;
+
+      if (minutes < min || minutes > max) {
+        ctx.AddFailure("Duration", $"Duration must be between {min} and {max} minutes");
+      }
+    });
   }
 }
 

@@ -29,6 +29,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- RecordVm and its validator are internal; the tests exercise them directly. -->
+    <InternalsVisibleTo Include="xtreamium-proxy.tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CrystalQuartz.AspNetCore" Version="7.3.0" />
     <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />

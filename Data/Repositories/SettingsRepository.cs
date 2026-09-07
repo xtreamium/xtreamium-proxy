@@ -58,6 +58,20 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
       settingsDict["RecordingsPath"] = defaultPath;
     }
 
+    // Seeded, never force-synced: unlike Port below, these are meant to be changed from the
+    // settings page and to survive whatever appsettings.json happens to say afterwards.
+    if (!settingsDict.ContainsKey("MinDurationMinutes")) {
+      var min = _config.Recordings.MinDurationMinutes.ToString();
+      await UpdateOrCreateSettingAsync("MinDurationMinutes", min);
+      settingsDict["MinDurationMinutes"] = min;
+    }
+
+    if (!settingsDict.ContainsKey("MaxDurationMinutes")) {
+      var max = _config.Recordings.MaxDurationMinutes.ToString();
+      await UpdateOrCreateSettingAsync("MaxDurationMinutes", max);
+      settingsDict["MaxDurationMinutes"] = max;
+    }
+
     // Always sync Port from appsettings configuration on startup
     var configuredPort = _config.Networking.Port.ToString();
     if (!settingsDict.ContainsKey("Port")) {

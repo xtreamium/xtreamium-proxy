@@ -1,5 +1,6 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Quartz;
+using Xtreamium.Proxy.Data.Models;
 using Xtreamium.Proxy.Data.Repositories;
 using Xtreamium.Proxy.Models;
 
@@ -8,14 +9,17 @@ namespace Xtreamium.Proxy.Services.Jobs;
 public class RecordJob : IJob {
   private readonly IRecordingService _recorder;
   private readonly IRecordingRepository _recordingRepository;
+  private readonly IRecordingNotifier _notifier;
   private readonly ILogger<RecordJob> _logger;
 
   public RecordJob(
     IRecordingService recorder,
     IRecordingRepository recordingRepository,
+    IRecordingNotifier notifier,
     ILogger<RecordJob> logger) {
     _recorder = recorder;
     _recordingRepository = recordingRepository;
+    _notifier = notifier;
     _logger = logger;
   }
 
@@ -46,26 +50,40 @@ public class RecordJob : IJob {
         "[DIAG] RecordJob firing — JobId: {JobId}, StartTime: {StartTime}, EndTime: {EndTime}, Duration: {DurationMinutes}min, UtcNow: {UtcNow}",
         jobId, data.StartTime, data.EndTime, Math.Round(jobDuration, 2), DateTimeOffset.UtcNow);
 
-      await MarkStatus(jobId, "recording");
+      var recording = await MarkStatus(jobId, "recording");
+
+      Action<TimeSpan>? onProgress = null;
+      if (recording is not null) {
+        var duration = data.EndTime.Subtract(data.StartTime);
+        var captureStartedAt = DateTimeOffset.UtcNow;
+        onProgress = captured => {
+          // Fire and forget: the notifier swallows its own failures, so nothing is left
+          // unobserved, and ffmpeg's output loop must not block on a socket write.
+          _ = _notifier.RecordingProgressAsync(
+            recording, captured, DateTimeOffset.UtcNow.Subtract(captureStartedAt), duration);
+        };
+      }
 
       var outputFile = await _recorder.RecordShow(
         data.Url.DecodeUrl(),
         data.StartTime,
         data.EndTime,
         onOutputFileCreated: path => SetOutputFile(jobId, path),
-        context.CancellationToken);
+        onProgress: onProgress,
+        cancellationToken: context.CancellationToken);
 
       if (!string.IsNullOrEmpty(outputFile)) {
-        var recording = await _recordingRepository.GetByJobIdAsync(jobId);
-        if (recording is null) {
+        // Re-read rather than reusing the row from above: SetOutputFile has written to it since.
+        var completed = await _recordingRepository.GetByJobIdAsync(jobId);
+        if (completed is null) {
           _logger.LogError("Failed to find recording with JobId {JobId}", jobId);
           return;
         }
 
-        recording.IsRecorded = true;
-        recording.FilePath = outputFile;
-        recording.Status = "complete"; // Successfully recorded
-        await _recordingRepository.UpdateAsync(recording);
+        completed.IsRecorded = true;
+        completed.FilePath = outputFile;
+        completed.Status = "complete"; // Successfully recorded
+        await SaveAndAnnounce(completed);
       }
     } catch (OperationCanceledException) {
       _logger.LogInformation("Recording job {JobId} was cancelled", jobId);
@@ -120,7 +138,7 @@ public class RecordJob : IJob {
         recording.FilePath = null;
       }
 
-      await _recordingRepository.UpdateAsync(recording);
+      await SaveAndAnnounce(recording);
       _logger.LogInformation("Marked recording {JobId} as {Status}", jobId, recording.Status);
     } catch (Exception ex) {
       _logger.LogWarning(ex, "Failed to finalise recording for JobId {JobId}", jobId);
@@ -128,22 +146,33 @@ public class RecordJob : IJob {
   }
 
   /// <summary>
+  /// Commits the row, then tells anyone listening. In that order, always: a client that refetches
+  /// on the event has to find the new state already there, or the push is worse than useless.
+  /// </summary>
+  private async Task SaveAndAnnounce(Recording recording) {
+    await _recordingRepository.UpdateAsync(recording);
+    await _notifier.RecordingChangedAsync(recording, "status");
+  }
+
+  /// <summary>
   /// Best-effort status write. A status that cannot be persisted is worth a warning but must
   /// never abort an otherwise-healthy recording, so every failure here is swallowed.
   /// </summary>
-  private async Task MarkStatus(string jobId, string status) {
+  private async Task<Recording?> MarkStatus(string jobId, string status) {
     try {
       var recording = await _recordingRepository.GetByJobIdAsync(jobId);
       if (recording is null) {
         _logger.LogWarning("No recording found with JobId {JobId} to mark as {Status}", jobId, status);
-        return;
+        return null;
       }
 
       recording.Status = status;
-      await _recordingRepository.UpdateAsync(recording);
+      await SaveAndAnnounce(recording);
       _logger.LogInformation("Marked recording {JobId} as {Status}", jobId, status);
+      return recording;
     } catch (Exception ex) {
       _logger.LogWarning(ex, "Failed to update recording status to {Status} for JobId {JobId}", status, jobId);
+      return null;
     }
   }
 }

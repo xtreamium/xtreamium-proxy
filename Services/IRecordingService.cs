@@ -9,8 +9,15 @@ public interface IRecordingService {
   /// the caller can persist it. Whatever happens next - a clean finish, an error, or the process
   /// being killed outright - the file can still be found again.
   /// </param>
+  /// <param name="onProgress">
+  /// Invoked with the media time ffmpeg has actually captured, throttled to at most one call a
+  /// second. The value is absolute rather than incremental, so a consumer that drops one loses
+  /// nothing. Note this stops being called entirely when the input stalls - that silence is the
+  /// only signal there is that a stream has died, so do not paper over it with a heartbeat.
+  /// </param>
   Task<string> RecordShow(string url, DateTimeOffset startTime, DateTimeOffset endTime,
-    Func<string, Task>? onOutputFileCreated = null, CancellationToken cancellationToken = default);
+    Func<string, Task>? onOutputFileCreated = null, Action<TimeSpan>? onProgress = null,
+    CancellationToken cancellationToken = default);
 
   Task<bool> DeleteRecordingAsync(Guid recordingId, CancellationToken cancellationToken = default);
 
