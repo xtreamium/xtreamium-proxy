@@ -1,4 +1,6 @@
 ﻿using CrystalQuartz.AspNetCore;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using Quartz;
 using Serilog;
 using Xtreamium.Proxy.Configuration;
@@ -97,8 +99,33 @@ builder.Services.AddCors(options => {
 });
 
 builder.Services.AddHttpClient("StreamPassthrough", c => {
-  c.Timeout = Timeout.InfiniteTimeSpan;
-});
+    c.Timeout = Timeout.InfiniteTimeSpan;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("mpv/0.38.0");
+  })
+  .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler {
+    AllowAutoRedirect = false,
+    UseCookies = true,
+    AutomaticDecompression = System.Net.DecompressionMethods.None,
+  })
+  .AddResilienceHandler("stream-retry", pipeline => {
+    // NOTE: No Polly timeout here — a timeout at the HttpClient handler level would also cancel
+    // body streaming after headers are received. The header-only timeout is applied manually
+    // with a linked CancellationTokenSource inside FetchWithRedirectsAsync.
+
+    // Retry up to 2 extra times (3 attempts total) on transient failures.
+    pipeline.AddRetry(new HttpRetryStrategyOptions {
+      MaxRetryAttempts = 2,
+      Delay = TimeSpan.FromMilliseconds(250),
+      BackoffType = DelayBackoffType.Linear,
+      ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+        .Handle<HttpRequestException>()
+        .HandleResult(r =>
+          r.StatusCode is System.Net.HttpStatusCode.NotFound
+            or System.Net.HttpStatusCode.RequestTimeout
+            or System.Net.HttpStatusCode.TooManyRequests
+            || (int)r.StatusCode >= 500),
+    });
+  });
 
 builder.Services.AddScoped<IVideoPlayerService, VideoPlayerService>();
 builder.Services.AddScoped<IRecordingService, RecordingService>();
@@ -128,6 +155,12 @@ var dbFile = connectionString.Replace("Data Source=", "");
 await app.InitializeConfigurationDbAsync(dbFile);
 
 app.MigrateDatabase();
+
+// Nothing is capturing yet, so anything still marked "recording" died with a previous run
+using (var startupScope = app.Services.CreateScope()) {
+  var recordingService = startupScope.ServiceProvider.GetRequiredService<IRecordingService>();
+  await recordingService.ReconcileInterruptedRecordingsAsync();
+}
 
 app.UseCors("WebFrontend");
 

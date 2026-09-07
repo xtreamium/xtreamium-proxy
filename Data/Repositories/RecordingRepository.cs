@@ -7,6 +7,7 @@ public interface IRecordingRepository : IRepository<Recording> {
   Task<Recording?> GetByJobIdAsync(string jobId);
   Task<IEnumerable<Recording>> GetScheduledRecordingsAsync();
   Task<IEnumerable<Recording>> GetCompletedRecordingsAsync();
+  Task<IEnumerable<Recording>> GetByStatusAsync(string status);
 }
 
 public class RecordingRepository : Repository<Recording>, IRecordingRepository {
@@ -48,5 +49,11 @@ public class RecordingRepository : Repository<Recording>, IRecordingRepository {
     using var connection = await _connectionFactory.CreateConnectionAsync();
     const string sql = "SELECT * FROM recordings WHERE IsRecorded = 1 ORDER BY StartTime DESC";
     return await connection.QueryAsync<Recording>(sql);
+  }
+
+  public async Task<IEnumerable<Recording>> GetByStatusAsync(string status) {
+    using var connection = await _connectionFactory.CreateConnectionAsync();
+    const string sql = "SELECT * FROM recordings WHERE Status = @Status ORDER BY StartTime DESC";
+    return await connection.QueryAsync<Recording>(sql, new { Status = status });
   }
 }

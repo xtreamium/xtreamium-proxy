@@ -49,11 +49,17 @@ public static class RecordingsEndpoint {
             .WithIdentity(jobKey)
             .Build();
 
-          // If StartTime is in the past, schedule for 5 seconds from now
+          // If StartTime is in the past, schedule for 5 seconds from now. Clipping the request's
+          // own StartTime to match keeps the recording inside its window: the duration handed to
+          // ffmpeg is EndTime - StartTime, so leaving the original start here would record the
+          // full nominal length from a late start and overrun the show by however late we were.
           var scheduledStartTime = request.StartTime;
           if (request.StartTime < DateTimeOffset.Now) {
             scheduledStartTime = DateTimeOffset.Now.AddSeconds(5);
-            logger.LogDebug("StartTime is in the past, scheduling for 5 seconds from now");
+            request.StartTime = scheduledStartTime;
+            logger.LogDebug(
+              "StartTime is in the past, starting in 5 seconds and clipping to {EndTime} ({DurationMinutes}min)",
+              request.EndTime, Math.Round(request.EndTime.Subtract(scheduledStartTime).TotalMinutes, 2));
           }
 
           var trigger = TriggerBuilder.Create()

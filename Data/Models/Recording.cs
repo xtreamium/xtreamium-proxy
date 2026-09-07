@@ -17,8 +17,9 @@ public record Recording {
   public string? FilePath { get; set; }
 
   /// <summary>
-  /// Status of the recording: "pending", "complete", "partial", or "failed"
+  /// Status of the recording: "pending", "recording", "complete", "partial", or "failed"
   /// pending = scheduled but not yet recorded
+  /// recording = ffmpeg is actively capturing
   /// complete = successfully recorded the full duration
   /// partial = recording was interrupted (user cancelled)
   /// failed = recording encountered an error

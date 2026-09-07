@@ -6,6 +6,13 @@ using Xtreamium.Proxy.Data.Repositories;
 namespace Xtreamium.Proxy.Services;
 
 public class RecordingService : IRecordingService {
+  /// <summary>
+  /// How long ffmpeg is given to flush its encoders and finalise the container after it
+  /// has been asked to stop. Killing it before it gets there leaves an MP4 with no moov
+  /// atom, which no player can open.
+  /// </summary>
+  private static readonly TimeSpan ShutdownGrace = TimeSpan.FromSeconds(30);
+
   private readonly ILogger<RecordingService> _logger;
   private readonly IRecordingRepository _recordingRepository;
   private readonly ISettingsRepository _settingsRepository;
@@ -23,7 +30,8 @@ public class RecordingService : IRecordingService {
   }
 
   public async Task<string> RecordShow(
-    string url, DateTimeOffset startTime, DateTimeOffset endTime, CancellationToken cancellationToken = default) {
+    string url, DateTimeOffset startTime, DateTimeOffset endTime,
+    Func<string, Task>? onOutputFileCreated = null, CancellationToken cancellationToken = default) {
     _logger.LogInformation("Recording {Url} scheduled for {StartTime}", url, startTime);
 
     // Get recordings path from database settings
@@ -33,10 +41,15 @@ public class RecordingService : IRecordingService {
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "xtreamium"));
 
-    var duration = endTime.Subtract(startTime).TotalSeconds;
+    var duration = endTime.Subtract(startTime);
     _logger.LogTrace(
       "[DIAG] RecordShow called — StartTime: {StartTime}, EndTime: {EndTime}, Duration: {DurationSeconds}s ({DurationMinutes}min), UtcNow: {UtcNow}",
-      startTime, endTime, duration, Math.Round(duration / 60, 2), DateTimeOffset.UtcNow);
+      startTime, endTime, duration.TotalSeconds, Math.Round(duration.TotalMinutes, 2), DateTimeOffset.UtcNow);
+
+    if (duration <= TimeSpan.Zero) {
+      throw new InvalidOperationException(
+        $"Recording end time {endTime} is not after start time {startTime}");
+    }
 
     // Validate and ensure output directory exists
     SecurityHelpers.EnsureDirectoryExistsAndWritable(outputPath);
@@ -45,8 +58,17 @@ public class RecordingService : IRecordingService {
     var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}.mp4";
     var outputFile = SecurityHelpers.ValidateAndSanitizeFilePath(outputPath, fileName);
 
+    // Publish where the file will be before recording starts. An interrupted capture still leaves
+    // a playable fragmented MP4, and without the path persisted nothing can find it afterwards.
+    if (onOutputFileCreated is not null) {
+      await onOutputFileCreated(outputFile);
+    }
+
     // Flag to track if cancellation was external (user requested) vs duration-based (natural end)
     var wasExternallyCancelled = false;
+
+    // Cancels the overrun timer below as soon as ffmpeg is done with it
+    using var overrunTimer = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
     try {
       var task = FFMpegArguments
@@ -57,24 +79,30 @@ public class RecordingService : IRecordingService {
           .WithCustomArgument("-reconnect_delay_max 10")
           .WithCustomArgument("-reconnect_at_eof 1"))
         .OutputToFile(outputFile, true, options => options
-          .CopyChannel()
           .WithAudioCodec(AudioCodec.Aac)
           .WithVideoCodec(VideoCodec.LibX264)
-          .WithSpeedPreset(Speed.VeryFast))
-        .CancellableThrough(out var cancel, 2000);
+          .WithSpeedPreset(Speed.VeryFast)
+          // Fragmented MP4: the header is written before any media and each fragment is
+          // self-describing, so the file plays even when ffmpeg never gets to write the
+          // trailer — a user cancelling mid-show, a crash, a power cut. Short fragments
+          // flushed as they are produced cap what an abrupt stop can lose at ~2 seconds.
+          .WithCustomArgument("-movflags +frag_keyframe+empty_moov+default_base_moof")
+          .WithCustomArgument("-frag_duration 2000000")
+          .WithCustomArgument("-flush_packets 1")
+          // Hand ffmpeg the duration so it ends the recording itself and exits cleanly.
+          // The timer below is only a backstop for when it overruns.
+          .WithDuration(duration))
+        .CancellableThrough(out var cancel, (int)ShutdownGrace.TotalMilliseconds);
 
       _logger.LogDebug("Recording {Url} with args {Args}", url, task.Arguments);
 
-      // Schedule the recording to stop after the duration
-      _ = Task.Delay((int)(duration * 1000), cancellationToken)
+      // Backstop: if ffmpeg outruns its own -t — e.g. a stalled input that keeps reconnecting
+      // ask it to wrap up rather than let it record indefinitely.
+      _ = Task.Delay(duration + ShutdownGrace, overrunTimer.Token)
         .ContinueWith(_ => {
-          if (cancellationToken.IsCancellationRequested) {
-            return;
-          }
-
-          _logger.LogInformation("Finished recording {Url}", url);
+          _logger.LogWarning("Recording {Url} overran its scheduled duration - stopping it", url);
           cancel();
-        }, TaskContinuationOptions.NotOnCanceled);
+        }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
       // Register external cancellation
       _ = cancellationToken.Register(() => {
@@ -84,18 +112,44 @@ public class RecordingService : IRecordingService {
       });
 
       await task.ProcessAsynchronously();
+      _logger.LogInformation("Finished recording {Url} after {Duration} seconds", url, duration.TotalSeconds);
     } catch (OperationCanceledException) {
       if (wasExternallyCancelled) {
         _logger.LogInformation("Recording {Url} cancelled by user - keeping partial file", url);
         return outputFile; // Return the partial file so it can be preserved
       }
 
-      _logger.LogInformation("Recording completed successfully after {Duration} seconds", duration);
+      _logger.LogInformation("Recording {Url} stopped after {Duration} seconds", url, duration.TotalSeconds);
     } catch (Exception e) {
       _logger.LogError(e, "Error recording {Url}", url);
+      throw; // Never let a failed recording be reported as a complete one
+    } finally {
+      overrunTimer.Cancel();
     }
 
     return outputFile;
+  }
+
+  public async Task<int> ReconcileInterruptedRecordingsAsync() {
+    // Nothing is capturing at startup, so any row still marked "recording" was left there by a
+    // restart or a crash - its ffmpeg process is long gone and its job will never resume.
+    var interrupted = (await _recordingRepository.GetByStatusAsync("recording")).ToList();
+
+    foreach (var recording in interrupted) {
+      var usable = RecordingFiles.HasUsableVideo(recording.FilePath);
+
+      recording.Status = usable ? "partial" : "failed";
+      recording.IsRecorded = usable;
+      if (!usable) {
+        recording.FilePath = null;
+      }
+
+      await _recordingRepository.UpdateAsync(recording);
+      _logger.LogWarning("Recording '{Title}' was interrupted by a previous run - marked {Status}",
+        recording.Title, recording.Status);
+    }
+
+    return interrupted.Count;
   }
 
   public async Task<bool> DeleteRecordingAsync(Guid recordingId, CancellationToken cancellationToken = default) {
