@@ -19,7 +19,6 @@ public static class DatabaseServiceExtensions {
 
     // Core database services
     services.AddSingleton<IDbConnectionFactory, SqliteConnectionFactory>();
-    services.AddScoped<DatabaseInitializer>();
     services.AddScoped<IUnitOfWork, UnitOfWork>();
 
     // Repository services
@@ -56,26 +55,5 @@ public static class DatabaseServiceExtensions {
   /// </summary>
   public static string GetConfigurationDbConnectionString() {
     return $"Data Source={GetConfigurationDbFilePath()}";
-  }
-
-  /// <summary>
-  /// Initialize database and return connection string for Quartz
-  /// </summary>
-  public static async Task<string> InitializeDatabaseAsync(this IServiceProvider services) {
-    using var scope = services.CreateScope();
-    var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
-    return await initializer.InitializeQuartzTablesAsync();
-  }
-
-  /// <summary>
-  /// Initialize Quartz tables after the application is built
-  /// </summary>
-  public static async Task<string> InitializeConfigurationDbAsync(this WebApplication app, string dbFile) {
-    using var scope = app.Services.CreateScope();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Database path: {DbPath}", dbFile);
-
-    var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
-    return await dbInitializer.InitializeQuartzTablesAsync();
   }
 }

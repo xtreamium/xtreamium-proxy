@@ -73,7 +73,7 @@ public static class RecordingsEndpoint {
             .UsingJobData("data", JsonSerializer.Serialize(request))
             .Build();
 
-          await scheduler.ScheduleJob(job, trigger, ct);
+          await scheduler.ScheduleJob(job, trigger);
           var recording = new Recording {
             Id = Guid.NewGuid(),
             Url = HttpUtility.UrlDecode(request.Url),
@@ -162,13 +162,13 @@ public static class RecordingsEndpoint {
             EndTime = request.EndTime,
           };
 
-          var trigger = TriggerBuilder.Create()
-            .WithSimpleSchedule()
-            .StartAt(scheduledStartTime)
-            .UsingJobData("data", JsonSerializer.Serialize(jobData))
-            .Build();
+           var trigger = TriggerBuilder.Create()
+             .WithSimpleSchedule()
+             .StartAt(scheduledStartTime)
+             .UsingJobData("data", JsonSerializer.Serialize(jobData))
+             .Build();
 
-          await scheduler.ScheduleJob(job, trigger, ct);
+           await scheduler.ScheduleJob(job, trigger);
 
           recording.JobId = newJobId;
           recording.Title = request.Title;

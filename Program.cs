@@ -159,10 +159,6 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Initialise Quartz tables if needed
-var dbFile = connectionString.Replace("Data Source=", "");
-await app.InitializeConfigurationDbAsync(dbFile);
-
 app.MigrateDatabase();
 
 // Nothing is capturing yet, so anything still marked "recording" died with a previous run

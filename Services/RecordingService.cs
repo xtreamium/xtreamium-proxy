@@ -1,4 +1,4 @@
-﻿﻿using FFMpegCore;
+﻿using FFMpegCore;
 using FFMpegCore.Enums;
 using Quartz;
 using Xtreamium.Proxy.Data.Repositories;
@@ -168,7 +168,9 @@ public class RecordingService : IRecordingService {
     foreach (var recording in interrupted) {
       var usable = RecordingFiles.HasUsableVideo(recording.FilePath);
 
-      recording.Status = usable ? "partial" : "failed";
+      recording.Status = usable
+        ? "partial"
+        : "failed";
       recording.IsRecorded = usable;
       if (!usable) {
         recording.FilePath = null;
@@ -200,23 +202,13 @@ public class RecordingService : IRecordingService {
           var scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
           var jobKey = new JobKey(recording.JobId);
 
-          // Check if the job is currently executing
-          var executingJobs = await scheduler.GetCurrentlyExecutingJobs(cancellationToken);
-          var isRunning = executingJobs.Any(j => j.JobDetail.Key.Equals(jobKey));
-
-          if (isRunning) {
-            _logger.LogInformation("Stopping currently running recording job: {JobId}", recording.JobId);
-          }
-
           // Delete the job - this will trigger the CancellationToken in the job execution context
           var deleted = await scheduler.DeleteJob(jobKey, cancellationToken);
           if (deleted) {
             _logger.LogInformation("Deleted job: {JobId}", recording.JobId);
 
-            // If job was running, give it time to cancel gracefully
-            if (isRunning) {
-              await Task.Delay(2000, cancellationToken);
-            }
+            // Give the job time to cancel gracefully
+            await Task.Delay(2000, cancellationToken);
           } else {
             _logger.LogWarning("Job {JobId} not found in scheduler", recording.JobId);
           }

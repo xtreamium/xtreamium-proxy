@@ -5,7 +5,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Xtreamium.Proxy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -35,28 +35,27 @@
 
   <ItemGroup>
     <PackageReference Include="CrystalQuartz.AspNetCore" Version="7.3.0" />
-    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Dapper" Version="2.1.86" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
-    <PackageReference Include="FFMpegCore" Version="5.2.0" />
-    <PackageReference Include="FluentMigrator.Runner" Version="7.1.0" />
-    <PackageReference Include="FluentValidation" Version="12.0.0" />
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.6.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
-    <PackageReference Include="Quartz" Version="3.15.0" />
-    <PackageReference Include="Quartz.AspNetCore" Version="3.15.0" />
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0" />
-    <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.15.0" />
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-    <PackageReference Include="Velopack" Version="0.0.942" />
+    <PackageReference Include="FFMpegCore" Version="5.4.0" />
+    <PackageReference Include="FluentMigrator.Runner" Version="8.0.1" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="10.0.12" />
+    <PackageReference Include="Quartz" Version="4.1.0" />
+    <PackageReference Include="Quartz.AspNetCore" Version="4.1.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="4.1.0" />
+    <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="4.1.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Data\quartz.sql" />
     <None Remove="Data\xtreamium.sql" />
-    <EmbeddedResource Include="Data\quartz.sql" />
     <EmbeddedResource Remove="logs\**" />
     <None Remove="logs\**" />
     <EmbeddedResource Remove="publish\**" />

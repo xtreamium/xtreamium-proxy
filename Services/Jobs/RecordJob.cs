@@ -23,7 +23,7 @@ public class RecordJob : IJob {
     _logger = logger;
   }
 
-  public async Task Execute(IJobExecutionContext context) {
+  public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken) {
     var jobId = context.JobDetail.Key.Name;
     if (context.Trigger.JobDataMap["data"] is not string) {
       _logger.LogError("Invalid job data {JobData}", context.Trigger.JobDataMap);
@@ -64,13 +64,13 @@ public class RecordJob : IJob {
         };
       }
 
-      var outputFile = await _recorder.RecordShow(
-        data.Url.DecodeUrl(),
-        data.StartTime,
-        data.EndTime,
-        onOutputFileCreated: path => SetOutputFile(jobId, path),
-        onProgress: onProgress,
-        cancellationToken: context.CancellationToken);
+       var outputFile = await _recorder.RecordShow(
+         data.Url.DecodeUrl(),
+         data.StartTime,
+         data.EndTime,
+         onOutputFileCreated: path => SetOutputFile(jobId, path),
+         onProgress: onProgress,
+         cancellationToken: cancellationToken);
 
       if (!string.IsNullOrEmpty(outputFile)) {
         // Re-read rather than reusing the row from above: SetOutputFile has written to it since.
