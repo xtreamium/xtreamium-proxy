@@ -48,6 +48,9 @@ jobs:
     - name: Publish Linux
       run: dotnet publish xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
+    - name: Publish Tray
+      run: dotnet publish xtreamium-tray/xtreamium-tray.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+
     - name: Remove Development Configuration
       run: rm -f ./publish/linux/appsettings.Development.json
 
@@ -83,6 +86,23 @@ jobs:
         WantedBy=default.target
         EOF
 
+        # System-wide XDG autostart entry for the tray icon — shipped at
+        # /etc/xdg/autostart/xtreamium-tray.desktop, so it starts on the next graphical login
+        # with no per-user setup. (The tray binary can also self-install a per-user copy of this
+        # under ~/.config/autostart when run standalone/unpackaged; the two don't conflict, since
+        # a user-level entry of the same name simply takes precedence over this one.)
+        cat > ./publish/linux/xtreamium-tray.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=Xtreamium Tray
+        Comment=Shows Xtreamium Proxy recording status in the system tray
+        Exec=/usr/bin/xtreamium-tray
+        Icon=xtreamium-tray
+        Terminal=false
+        Categories=Utility;
+        X-GNOME-Autostart-enabled=true
+        EOF
+
         # Minimal README bundled into the tarball for AUR's makepkg source.
         cat > ./publish/linux/README.md << 'EOF'
         # Xtreamium Proxy
@@ -98,9 +118,14 @@ jobs:
         Config is created at `~/.config/xtreamium-proxy/appsettings.json` on first
         run. A reference template is installed to
         `/usr/share/xtreamium-proxy/appsettings.json.example`.
+
+        A notification-area icon (`xtreamium-tray`) showing recording status is
+        installed alongside the service and starts automatically on your next
+        graphical login.
         EOF
 
         chmod +x ./publish/linux/xtreamium-proxy
+        chmod +x ./publish/linux/xtreamium-tray
 
     - name: Build Distribution Packages
       run: |

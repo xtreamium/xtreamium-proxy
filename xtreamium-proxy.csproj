@@ -96,6 +96,15 @@
     <None Remove="tests/**" />
   </ItemGroup>
 
+  <!-- xtreamium-tray is its own project living in a subfolder of this repo — excluded from this
+       project's own default globs the same way tests/** is above. -->
+  <ItemGroup>
+    <Content Remove="xtreamium-tray/**" />
+    <Compile Remove="xtreamium-tray/**" />
+    <EmbeddedResource Remove="xtreamium-tray/**" />
+    <None Remove="xtreamium-tray/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <EditorConfigFiles Remove=".editorconfig" />
   </ItemGroup>

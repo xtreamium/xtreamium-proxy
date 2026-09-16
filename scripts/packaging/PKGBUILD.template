@@ -20,4 +20,8 @@ package() {
     install -Dm644 "${srcdir}/appsettings.json" "${pkgdir}/usr/share/xtreamium-proxy/appsettings.json.example"
     install -Dm644 "${srcdir}/xtreamium-proxy.service" "${pkgdir}/usr/lib/systemd/user/xtreamium-proxy.service"
     install -Dm644 "${srcdir}/README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+    # Notification-area icon — independent process, started via the XDG autostart entry below.
+    install -Dm755 "${srcdir}/xtreamium-tray" "${pkgdir}/usr/bin/xtreamium-tray"
+    install -Dm644 "${srcdir}/xtreamium-tray.desktop" "${pkgdir}/etc/xdg/autostart/xtreamium-tray.desktop"
 }

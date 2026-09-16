@@ -16,6 +16,7 @@ maintainer: "Xtreamium <support@xtreamium.com>"
 description: |
   Xtreamium Proxy - A streaming proxy service
   A modern streaming proxy built with .NET 9, run as a per-user systemd service.
+  Includes a notification-area icon showing recording status.
 vendor: "Xtreamium"
 homepage: "https://github.com/xtreamium/xtreamium-proxy"
 license: "MIT"
@@ -39,6 +40,18 @@ contents:
 
   - src: "../../publish/linux/xtreamium-proxy.service"
     dst: "/usr/lib/systemd/user/xtreamium-proxy.service"
+    file_info:
+      mode: 0644
+
+  # Notification-area icon — an independent process from the service above, started via the
+  # XDG autostart entry below rather than by the service itself.
+  - src: "../../publish/linux/xtreamium-tray"
+    dst: "/usr/bin/xtreamium-tray"
+    file_info:
+      mode: 0755
+
+  - src: "../../publish/linux/xtreamium-tray.desktop"
+    dst: "/etc/xdg/autostart/xtreamium-tray.desktop"
     file_info:
       mode: 0644
 

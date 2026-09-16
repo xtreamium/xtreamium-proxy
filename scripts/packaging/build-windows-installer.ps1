@@ -37,6 +37,23 @@ if ($LASTEXITCODE -ne 0) {
 # Remove development configuration
 Remove-Item -Path "publish/win-x64/appsettings.Development.json" -ErrorAction SilentlyContinue
 
+# Build the tray icon into the same output folder, so Velopack bundles both into one installer.
+# The proxy service and the tray are independent processes at runtime — see UpdateManager's
+# first-run hook, which launches xtreamium-tray.exe once after installing the service.
+Write-Host "Building tray icon..." -ForegroundColor Yellow
+dotnet publish xtreamium-tray/xtreamium-tray.csproj `
+    -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -p:PublishSingleFile=true `
+    -p:Version=$Version `
+    -o publish/win-x64
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Tray build failed!"
+    exit 1
+}
+
 # Install Velopack if not present
 if (-not (Test-Path "tools/vpk")) {
     Write-Host "Installing Velopack..." -ForegroundColor Yellow

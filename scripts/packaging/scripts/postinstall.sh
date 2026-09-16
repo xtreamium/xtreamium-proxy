@@ -15,4 +15,7 @@ To start it automatically on boot (without requiring login):
 Config will be created at ~/.config/xtreamium-proxy/appsettings.json on first run.
 Reference template: /usr/share/xtreamium-proxy/appsettings.json.example
 
+A notification-area icon showing recording status starts automatically on
+your next graphical login.
+
 EOF

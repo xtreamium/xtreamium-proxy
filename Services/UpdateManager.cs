@@ -92,6 +92,13 @@ public class UpdateManager : IDisposable {
 
             InstallWindowsService();
 
+            // The tray icon is a separate, independent process from the service — launching it
+            // here (rather than having the service itself spawn a GUI process) is what gets it
+            // showing immediately post-install without requiring a logout/login. It registers
+            // its own autostart entry (HKCU Run key) on its own first launch, so nothing further
+            // is needed here for it to persist across reboots.
+            LaunchTrayIcon();
+
             // Exit immediately after service installation
             // Don't launch the GUI application
             Environment.Exit(0);
@@ -184,6 +191,28 @@ $"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Se
       };
       using var startProcess = System.Diagnostics.Process.Start(startServiceInfo);
       startProcess?.WaitForExit();
+    }
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void LaunchTrayIcon() {
+    try {
+      var exeDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName);
+      if (string.IsNullOrEmpty(exeDir)) {
+        return;
+      }
+
+      var trayExePath = Path.Combine(exeDir, "xtreamium-tray.exe");
+      if (!File.Exists(trayExePath)) {
+        return;
+      }
+
+      System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
+        FileName = trayExePath,
+        UseShellExecute = true,
+      });
+    } catch (Exception ex) {
+      System.Diagnostics.Debug.WriteLine($"Failed to launch tray icon: {ex.Message}");
     }
   }
 
