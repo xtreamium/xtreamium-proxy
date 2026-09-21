@@ -5,7 +5,7 @@ set -e
 # This script uses act to execute .github/workflows/build-installers.yaml locally
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"  # repo root (holds .github/)
 
 # Colors for output
 RED='\033[0;31m'
@@ -180,7 +180,7 @@ fi
 
 # Get version from csproj if not provided
 if [ -z "$VERSION" ]; then
-    VERSION=$(grep -oP '<Version>\K[^<]+' "$PROJECT_ROOT/xtreamium-proxy.csproj" | head -1)
+    VERSION=$(grep -oP '<Version>\K[^<]+' "$PROJECT_ROOT/proxy/xtreamium-proxy.csproj" | head -1)
     if [ -z "$VERSION" ]; then
         print_warning "Could not extract version from .csproj file, using v0.0.0-local"
         VERSION="v0.0.0-local"

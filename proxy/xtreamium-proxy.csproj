@@ -38,7 +38,10 @@
     <PackageReference Include="Dapper" Version="2.1.86" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
     <PackageReference Include="FFMpegCore" Version="5.4.0" />
-    <PackageReference Include="FluentMigrator.Runner" Version="8.0.1" />
+    <!-- Only SQLite is used. The FluentMigrator.Runner meta-package pulls in a runner (and driver)
+         for every supported database — DB2, Oracle, SQL Server, etc. — so reference just the pieces needed. -->
+    <PackageReference Include="FluentMigrator.Runner.Core" Version="8.0.1" />
+    <PackageReference Include="FluentMigrator.Runner.SQLite" Version="8.0.1" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />

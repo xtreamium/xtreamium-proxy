@@ -22,8 +22,8 @@ fi
 GIT_ROOT=$(git rev-parse --show-toplevel)
 cd "$GIT_ROOT"
 
-# Project file path (now relative to git root)
-PROJECT_FILE="xtreamium-proxy.csproj"
+# Project file path (relative to git root)
+PROJECT_FILE="proxy/xtreamium-proxy.csproj"
 
 # Parse arguments
 INCREMENT_TYPE="patch"

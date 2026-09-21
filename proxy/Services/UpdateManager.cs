@@ -84,7 +84,7 @@ public class UpdateManager : IDisposable {
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
   public static void HandleVelopackEvents() {
     VelopackApp.Build()
-        .WithFirstRun((v) => {
+        .OnFirstRun((v) => {
           // First run after installation - configure Windows Service
           try {
             // Remove any desktop shortcuts that might have been created
@@ -108,11 +108,11 @@ public class UpdateManager : IDisposable {
             Environment.Exit(1);
           }
         })
-        .WithAfterInstallFastCallback((v) => {
+        .OnAfterInstallFastCallback((v) => {
           // Quick post-install actions - remove shortcuts
           RemoveDesktopShortcuts();
         })
-        .WithAfterUpdateFastCallback((v) => {
+        .OnAfterUpdateFastCallback((v) => {
           // After update - restart the service instead of launching GUI
           try {
             RemoveDesktopShortcuts();
@@ -123,7 +123,7 @@ public class UpdateManager : IDisposable {
             Environment.Exit(1);
           }
         })
-        .WithBeforeUninstallFastCallback((v) => {
+        .OnBeforeUninstallFastCallback((v) => {
           // Uninstall Windows Service
           try {
             UninstallWindowsService();

@@ -11,7 +11,14 @@ xtreamium-proxy runs headless (a Windows Service or a per-user systemd daemon) a
 - Subscribes to the proxy's `/hubs/proxyStatus` SignalR hub for live `RecordingChanged`/`RecordingProgress` events.
 - Shows one of three icon states: idle, recording (red badge), or disconnected (can't reach the proxy — shown only after ~5s of failed connection, so brief reconnects don't flicker).
 - Tray menu: **Open web UI** (opens the proxy's configured web frontend) and **Quit**.
-- Self-installs a per-user autostart entry on first run (Windows: `HKCU\...\Run`; Linux: `~/.config/autostart/xtreamium-tray.desktop`). macOS autostart (`LaunchAgent`) is implemented but unused until macOS packaging exists.
+- Windows self-installs a per-user autostart entry on first run (`HKCU\...\Run`). Linux doesn't — see [Lifecycle](#lifecycle). macOS autostart (`LaunchAgent`) is implemented but unused until macOS packaging exists.
+
+## Lifecycle
+
+The tray starts and stops with the proxy. It's still a separate process (the proxy has no desktop session to draw an icon in), so each OS ties the two together differently:
+
+- **Linux** — packaged as a systemd user unit, `xtreamium-tray.service`, bound to `xtreamium-proxy.service`: starting the proxy starts the tray (`Wants=` on the proxy side), stopping or restarting the proxy stops or restarts it (`PartOf=`), and it won't start by itself while the proxy is down (`Requisite=`). A `graphical-session.target.wants` link starts it when the desktop session comes up after the proxy, which is the usual order at login. With no display available (e.g. a linger-started proxy with nobody logged in) the tray is skipped rather than failing. Quitting from the tray menu leaves it stopped until the proxy next starts or restarts.
+- **Windows** — the Velopack first-run hook launches the tray after installing the service, and the `HKCU\...\Run` entry starts it at login. The tray watches the `XtreamiumProxy` service and exits once it has stayed stopped for 60s (long enough to ride out an auto-update restart). Known gap: if the service is started again by hand after the tray has exited, the tray doesn't come back until the next login. If no such service exists (proxy run from a console) the tray never auto-exits.
 
 ## Running
 
@@ -25,7 +32,7 @@ Requires the proxy to be running (or it will simply show "disconnected" and retr
 
 - Status-only by design — no service start/stop/restart from the tray.
 - macOS: the autostart/tray code path exists but there is no packaging (`.app` bundle, notarization, CI) yet, matching xtreamium-proxy's own current lack of macOS distribution.
-- Packaging (nfpm/Velopack/CI) for Windows and Linux is a follow-up; today this is run from a local build.
+- Packaging: the release workflow (`.github/workflows/build-installers.yaml`) publishes the tray alongside the proxy and bundles it into the Velopack installer (Windows) and the tarball, `.deb`, `.rpm` and Arch packages (Linux).
 
 ## Tests
 

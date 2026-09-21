@@ -7,6 +7,9 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: proxy
 
     steps:
     - uses: actions/checkout@v4
@@ -14,7 +17,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
         
     - name: Build Windows Installer with Velopack
       shell: pwsh
@@ -32,10 +35,13 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-windows-installer
-        path: publish/packages/*.exe
+        path: proxy/publish/packages/*.exe
 
   build-linux:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: proxy
 
     steps:
     - uses: actions/checkout@v4
@@ -43,13 +49,13 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
 
     - name: Publish Linux
       run: dotnet publish xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
     - name: Publish Tray
-      run: dotnet publish xtreamium-tray/xtreamium-tray.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+      run: dotnet publish ../tray/xtreamium-tray.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
     - name: Remove Development Configuration
       run: rm -f ./publish/linux/appsettings.Development.json
@@ -72,7 +78,7 @@ jobs:
         Description=Xtreamium Proxy Service
         Documentation=https://github.com/xtreamium/xtreamium-proxy
         After=network-online.target
-        Wants=network-online.target
+        Wants=network-online.target xtreamium-tray.service
 
         [Service]
         Type=notify
@@ -86,21 +92,29 @@ jobs:
         WantedBy=default.target
         EOF
 
-        # System-wide XDG autostart entry for the tray icon — shipped at
-        # /etc/xdg/autostart/xtreamium-tray.desktop, so it starts on the next graphical login
-        # with no per-user setup. (The tray binary can also self-install a per-user copy of this
-        # under ~/.config/autostart when run standalone/unpackaged; the two don't conflict, since
-        # a user-level entry of the same name simply takes precedence over this one.)
-        cat > ./publish/linux/xtreamium-tray.desktop << 'EOF'
-        [Desktop Entry]
-        Type=Application
-        Name=Xtreamium Tray
-        Comment=Shows Xtreamium Proxy recording status in the system tray
-        Exec=/usr/bin/xtreamium-tray
-        Icon=xtreamium-tray
-        Terminal=false
-        Categories=Utility;
-        X-GNOME-Autostart-enabled=true
+        # Tray icon user unit — shipped at /usr/lib/systemd/user/xtreamium-tray.service. It is bound
+        # to the proxy's lifecycle: the proxy Wants= it (so starting the proxy starts the tray),
+        # PartOf= means stopping/restarting the proxy stops/restarts it, and Requisite= stops it
+        # being started on its own while the proxy is down.
+        cat > ./publish/linux/xtreamium-tray.service << 'EOF'
+        [Unit]
+        Description=Xtreamium Tray
+        Documentation=https://github.com/xtreamium/xtreamium-proxy
+        PartOf=xtreamium-proxy.service graphical-session.target
+        Requisite=xtreamium-proxy.service
+        After=xtreamium-proxy.service graphical-session.target
+        # The proxy can start before the desktop session has exported its display to the user
+        # manager. Skip cleanly (rather than crash-loop) when there is no display; the
+        # graphical-session.target.wants link shipped alongside this unit starts us once the
+        # session is up.
+        ConditionEnvironment=|WAYLAND_DISPLAY
+        ConditionEnvironment=|DISPLAY
+
+        [Service]
+        ExecStart=/usr/bin/xtreamium-tray
+        Restart=on-failure
+        RestartSec=5
+        Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
         EOF
 
         # Minimal README bundled into the tarball for AUR's makepkg source.
@@ -120,8 +134,9 @@ jobs:
         `/usr/share/xtreamium-proxy/appsettings.json.example`.
 
         A notification-area icon (`xtreamium-tray`) showing recording status is
-        installed alongside the service and starts automatically on your next
-        graphical login.
+        installed alongside the service. It is a systemd user unit tied to the
+        proxy: it starts and stops with `xtreamium-proxy` (whenever a graphical
+        session is available), so there is nothing extra to enable.
         EOF
 
         chmod +x ./publish/linux/xtreamium-proxy
@@ -144,25 +159,25 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-linux
-        path: ./xtreamium-proxy-linux.tar.gz
+        path: ./proxy/xtreamium-proxy-linux.tar.gz
 
     - name: Upload DEB Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-deb
-        path: ./publish/packages/*.deb
+        path: ./proxy/publish/packages/*.deb
 
     - name: Upload RPM Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-rpm
-        path: ./publish/packages/*.rpm
+        path: ./proxy/publish/packages/*.rpm
 
     - name: Upload Arch Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-arch
-        path: ./publish/packages/*.pkg.tar.zst
+        path: ./proxy/publish/packages/*.pkg.tar.zst
 
     - name: Push to AUR
       if: github.event_name == 'release' && !contains(github.ref_name, 'preview')

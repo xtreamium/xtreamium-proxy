@@ -43,17 +43,24 @@ contents:
     file_info:
       mode: 0644
 
-  # Notification-area icon — an independent process from the service above, started via the
-  # XDG autostart entry below rather than by the service itself.
+  # Notification-area icon. A separate process (it needs the desktop session, which the service
+  # doesn't have), but its lifecycle is bound to the service by the unit below: starting the
+  # proxy starts it, stopping/restarting the proxy stops/restarts it.
   - src: "../../publish/linux/xtreamium-tray"
     dst: "/usr/bin/xtreamium-tray"
     file_info:
       mode: 0755
 
-  - src: "../../publish/linux/xtreamium-tray.desktop"
-    dst: "/etc/xdg/autostart/xtreamium-tray.desktop"
+  - src: "../../publish/linux/xtreamium-tray.service"
+    dst: "/usr/lib/systemd/user/xtreamium-tray.service"
     file_info:
       mode: 0644
+
+  # Starts the tray when the desktop session comes up *after* the proxy already started (the
+  # usual order at login). The unit's Requisite= keeps this from starting it if the proxy is down.
+  - src: "../xtreamium-tray.service"
+    dst: "/usr/lib/systemd/user/graphical-session.target.wants/xtreamium-tray.service"
+    type: symlink
 
 scripts:
   postinstall: ./scripts/postinstall.sh

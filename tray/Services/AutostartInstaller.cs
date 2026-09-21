@@ -9,20 +9,22 @@ namespace Xtreamium.Tray.Services;
 /// the Windows Service without prompting). A marker file prevents re-writing on every launch and
 /// lets the user remove their own autostart entry without this fighting them.
 ///
+/// Linux is deliberately not handled here: the packaged tray is a systemd user unit bound to
+/// xtreamium-proxy.service, which is what makes it start and stop with the proxy. A self-installed
+/// XDG autostart entry would start a second, unmanaged copy at login that outlives the proxy.
+///
 /// macOS support is implemented but not yet wired into any packaging/installer — xtreamium-proxy
 /// itself has no macOS packaging pipeline today, so shipping a signed/notarized .app is a
 /// separate, later effort. This code path exists so it's ready when that happens.</summary>
 public static class AutostartInstaller {
   public static void EnsureInstalled() {
-    if (File.Exists(TrayPaths.AutostartMarkerPath)) {
+    if (OperatingSystem.IsLinux() || File.Exists(TrayPaths.AutostartMarkerPath)) {
       return;
     }
 
     try {
       if (OperatingSystem.IsWindows()) {
         InstallWindows();
-      } else if (OperatingSystem.IsLinux()) {
-        InstallLinux();
       } else if (OperatingSystem.IsMacOS()) {
         InstallMacOs();
       }
@@ -45,28 +47,6 @@ public static class AutostartInstaller {
     using var key = Registry.CurrentUser.OpenSubKey(
       @"Software\Microsoft\Windows\CurrentVersion\Run", writable: true);
     key?.SetValue("XtreamiumTray", $"\"{exePath}\"", RegistryValueKind.String);
-  }
-
-  private static void InstallLinux() {
-    var autostartDir = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "autostart");
-    Directory.CreateDirectory(autostartDir);
-
-    var exePath = Environment.ProcessPath ?? "xtreamium-tray";
-    var desktopEntry =
-      $"""
-       [Desktop Entry]
-       Type=Application
-       Name=Xtreamium Tray
-       Comment=Shows Xtreamium Proxy recording status in the system tray
-       Exec={exePath}
-       Icon=xtreamium-tray
-       Terminal=false
-       Categories=Utility;
-       X-GNOME-Autostart-enabled=true
-       """;
-
-    File.WriteAllText(Path.Combine(autostartDir, "xtreamium-tray.desktop"), desktopEntry);
   }
 
   [SupportedOSPlatform("macos")]

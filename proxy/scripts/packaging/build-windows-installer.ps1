@@ -1,4 +1,5 @@
 #!/usr/bin/env pwsh
+# Run from the proxy/ directory (all paths below are relative to it).
 param(
     [string]$Version = "",
     [string]$OutputDir = "publish/packages"
@@ -38,10 +39,11 @@ if ($LASTEXITCODE -ne 0) {
 Remove-Item -Path "publish/win-x64/appsettings.Development.json" -ErrorAction SilentlyContinue
 
 # Build the tray icon into the same output folder, so Velopack bundles both into one installer.
-# The proxy service and the tray are independent processes at runtime — see UpdateManager's
-# first-run hook, which launches xtreamium-tray.exe once after installing the service.
+# The proxy service and the tray are separate processes at runtime (the service has no desktop) —
+# see UpdateManager's first-run hook, which launches xtreamium-tray.exe once after installing the
+# service. The tray itself follows the service's lifecycle (it exits when the service stops).
 Write-Host "Building tray icon..." -ForegroundColor Yellow
-dotnet publish xtreamium-tray/xtreamium-tray.csproj `
+dotnet publish ../tray/xtreamium-tray.csproj `
     -c Release `
     -r win-x64 `
     --self-contained true `
