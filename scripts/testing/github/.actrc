@@ -1,0 +1,19 @@
+# act configuration file
+# https://github.com/nektos/act
+
+# Use larger Docker images that are closer to GitHub's actual runners
+# These images have more tools pre-installed
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Artifact server path for uploading/downloading artifacts
+--artifact-server-path=/tmp/act-artifacts
+
+# Container architecture (use host architecture)
+--container-architecture=linux/amd64
+
+# Reuse containers for faster subsequent runs (optional, can be commented out)
+# --reuse
+
+# Bind the Docker socket to allow Docker-in-Docker (if needed)
+# --bind
+
