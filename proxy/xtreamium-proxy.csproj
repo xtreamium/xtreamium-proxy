@@ -11,7 +11,7 @@
     <Nullable>enable</Nullable>
     <Version>1.4.52</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <ApplicationIcon>scripts/packaging/branding/app-icon.ico</ApplicationIcon>
+    <ApplicationIcon>../scripts/packaging/branding/app-icon.ico</ApplicationIcon>
     <Product>Xtreamium Proxy</Product>
     <Company>Xtreamium</Company>
     <Copyright>Copyright © Xtreamium 2025</Copyright>

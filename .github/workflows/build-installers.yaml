@@ -7,9 +7,6 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: proxy
 
     steps:
     - uses: actions/checkout@v4
@@ -35,13 +32,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-windows-installer
-        path: proxy/publish/packages/*.exe
+        path: publish/packages/*.exe
 
   build-linux:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: proxy
 
     steps:
     - uses: actions/checkout@v4
@@ -52,10 +46,10 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Publish Linux
-      run: dotnet publish xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+      run: dotnet publish proxy/xtreamium-proxy.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
     - name: Publish Tray
-      run: dotnet publish ../tray/xtreamium-tray.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+      run: dotnet publish tray/xtreamium-tray.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
 
     - name: Remove Development Configuration
       run: rm -f ./publish/linux/appsettings.Development.json
@@ -159,25 +153,25 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-linux
-        path: ./proxy/xtreamium-proxy-linux.tar.gz
+        path: ./xtreamium-proxy-linux.tar.gz
 
     - name: Upload DEB Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-deb
-        path: ./proxy/publish/packages/*.deb
+        path: ./publish/packages/*.deb
 
     - name: Upload RPM Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-rpm
-        path: ./proxy/publish/packages/*.rpm
+        path: ./publish/packages/*.rpm
 
     - name: Upload Arch Package
       uses: actions/upload-artifact@v4
       with:
         name: xtreamium-proxy-arch
-        path: ./proxy/publish/packages/*.pkg.tar.zst
+        path: ./publish/packages/*.pkg.tar.zst
 
     - name: Push to AUR
       if: github.event_name == 'release' && !contains(github.ref_name, 'preview')

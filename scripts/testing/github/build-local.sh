@@ -5,7 +5,7 @@ set -e
 # This script uses act to execute .github/workflows/build-installers.yaml locally
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"  # repo root (holds .github/)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # repo root (holds .github/)
 
 # Colors for output
 RED='\033[0;31m'

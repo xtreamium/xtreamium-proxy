@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# Run from the proxy/ directory (all paths below are relative to it).
+# Run from the repository root (all paths below are relative to it).
 param(
     [string]$Version = "",
     [string]$OutputDir = "publish/packages"
@@ -7,7 +7,7 @@ param(
 
 # Get version from .csproj if not provided
 if ([string]::IsNullOrEmpty($Version)) {
-    [xml]$csproj = Get-Content "xtreamium-proxy.csproj"
+    [xml]$csproj = Get-Content "proxy/xtreamium-proxy.csproj"
     $Version = $csproj.Project.PropertyGroup.Version
 }
 
@@ -21,7 +21,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 # Build the application
 Write-Host "Building application..." -ForegroundColor Yellow
-dotnet publish xtreamium-proxy.csproj `
+dotnet publish proxy/xtreamium-proxy.csproj `
     -c Release `
     -r win-x64 `
     --self-contained true `
@@ -43,7 +43,7 @@ Remove-Item -Path "publish/win-x64/appsettings.Development.json" -ErrorAction Si
 # see UpdateManager's first-run hook, which launches xtreamium-tray.exe once after installing the
 # service. The tray itself follows the service's lifecycle (it exits when the service stops).
 Write-Host "Building tray icon..." -ForegroundColor Yellow
-dotnet publish ../tray/xtreamium-tray.csproj `
+dotnet publish tray/xtreamium-tray.csproj `
     -c Release `
     -r win-x64 `
     --self-contained true `

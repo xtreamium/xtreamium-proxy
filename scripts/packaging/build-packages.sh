@@ -64,7 +64,7 @@ if [ -n "$VERSION" ]; then
     VERSION="${VERSION#v}"
     print_info "Using version from environment: $VERSION"
 else
-    VERSION=$(grep -oP '<Version>\K[^<]+' "$PROJECT_ROOT/xtreamium-proxy.csproj" | head -1)
+    VERSION=$(grep -oP '<Version>\K[^<]+' "$PROJECT_ROOT/proxy/xtreamium-proxy.csproj" | head -1)
     if [ -z "$VERSION" ]; then
         print_warning "Could not extract version from .csproj file, using 0.0.0"
         VERSION="0.0.0"
