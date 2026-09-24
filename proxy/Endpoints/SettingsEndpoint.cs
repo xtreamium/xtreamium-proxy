@@ -17,7 +17,8 @@ public static class SettingsEndpoint {
         RecordingsPath = settings.GetValueOrDefault("RecordingsPath", ""),
         Port = int.TryParse(settings.GetValueOrDefault("Port", "8963"), out var port) ? port : 8963,
         MinDurationMinutes = int.TryParse(settings.GetValueOrDefault("MinDurationMinutes"), out var min) ? min : null,
-        MaxDurationMinutes = int.TryParse(settings.GetValueOrDefault("MaxDurationMinutes"), out var max) ? max : null
+        MaxDurationMinutes = int.TryParse(settings.GetValueOrDefault("MaxDurationMinutes"), out var max) ? max : null,
+        WebUiUrl = settings.GetValueOrDefault("WebUiUrl", "")
       };
       return Results.Ok(vm);
     });
@@ -50,6 +51,10 @@ public static class SettingsEndpoint {
 
         if (request.MaxDurationMinutes.HasValue) {
           settings["MaxDurationMinutes"] = request.MaxDurationMinutes.Value.ToString();
+        }
+
+        if (!string.IsNullOrEmpty(request.WebUiUrl)) {
+          settings["WebUiUrl"] = request.WebUiUrl;
         }
 
         logger.LogInformation("Updating settings: {Settings}", string.Join(", ", settings.Select(s => $"{s.Key}={s.Value}")));

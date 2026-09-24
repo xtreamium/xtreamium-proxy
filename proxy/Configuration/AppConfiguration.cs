@@ -5,11 +5,19 @@ namespace Xtreamium.Proxy.Configuration;
 /// </summary>
 public class AppConfiguration {
   public const string SectionName = "App";
+  public const string DefaultProductionWebUiUrl = "https://streams.ferg.al";
+  public const string DefaultDevelopmentWebUiUrl = "https://streams.dev.fergl.ie:3000";
 
   public NetworkingConfiguration Networking { get; set; } = new();
   public VideoPlayerConfiguration VideoPlayer { get; set; } = new();
   public RecordingsConfiguration Recordings { get; set; } = new();
   public List<string> AllowedCorsOrigins { get; set; } = new();
+
+  /// <summary>
+  /// Where the tray's "Open web UI" command points. No compiled-in default — the correct value
+  /// depends on the ASP.NET Core environment, so Program.cs computes it before this binds.
+  /// </summary>
+  public string? WebUiUrl { get; set; }
 }
 
 public class NetworkingConfiguration {

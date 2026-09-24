@@ -16,6 +16,8 @@ public class SettingsVm {
   public int? MinDurationMinutes { get; set; }
 
   public int? MaxDurationMinutes { get; set; }
+
+  public string? WebUiUrl { get; set; }
 }
 
 internal sealed class SettingsVmValidator : AbstractValidator<SettingsVm> {
@@ -34,6 +36,11 @@ internal sealed class SettingsVmValidator : AbstractValidator<SettingsVm> {
       .GreaterThan(x => x.MinDurationMinutes!.Value)
       .When(x => x.MinDurationMinutes.HasValue && x.MaxDurationMinutes.HasValue)
       .WithMessage("Maximum duration must be greater than the minimum.");
+
+    RuleFor(x => x.WebUiUrl!)
+      .Must(url => Uri.TryCreate(url, UriKind.Absolute, out _))
+      .When(x => !string.IsNullOrEmpty(x.WebUiUrl))
+      .WithMessage("Web UI URL must be a valid absolute URL.");
   }
 }
 

@@ -72,6 +72,14 @@ public class SettingsRepository : Repository<Setting>, ISettingsRepository {
       settingsDict["MaxDurationMinutes"] = max;
     }
 
+    // Defensive fallback for installs that somehow reach here without the AddWebUiUrlSetting
+    // migration having run. _config.WebUiUrl has no compiled-in default (Program.cs computes it),
+    // so guard against writing an empty value that would permanently disable the tray's button.
+    if (!settingsDict.ContainsKey("WebUiUrl") && !string.IsNullOrEmpty(_config.WebUiUrl)) {
+      await UpdateOrCreateSettingAsync("WebUiUrl", _config.WebUiUrl);
+      settingsDict["WebUiUrl"] = _config.WebUiUrl;
+    }
+
     // Always sync Port from appsettings configuration on startup
     var configuredPort = _config.Networking.Port.ToString();
     if (!settingsDict.ContainsKey("Port")) {

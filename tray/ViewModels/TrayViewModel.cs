@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Xtreamium.Tray.Services;
+using Xtreamium.Tray.Views;
 
 namespace Xtreamium.Tray.ViewModels;
 
@@ -27,6 +28,7 @@ public partial class TrayViewModel : ObservableObject {
   private bool _isConfirmedConnected;
   private CancellationTokenSource? _disconnectPromotionCts;
   private DateTime _lastProgressTooltipUpdate = DateTime.MinValue;
+  private Window? _settingsWindow;
 
   [ObservableProperty] private WindowIcon _iconSource;
   [ObservableProperty] private string _tooltipText = "Xtreamium — starting…";
@@ -61,7 +63,8 @@ public partial class TrayViewModel : ObservableObject {
       var active = await _apiClient.GetActiveRecordingsAsync(endpoints.BaseUrl, CancellationToken.None);
       _tracker.Reset(active);
 
-      var webUiUrl = endpoints.WebUiUrl;
+      var settings = await _apiClient.GetSettingsAsync(endpoints.BaseUrl, CancellationToken.None);
+      var webUiUrl = settings?.WebUiUrl;
       Dispatcher.UIThread.Post(() => {
         _webUiUrl = webUiUrl;
         IsWebUiEnabled = webUiUrl is not null;
@@ -147,6 +150,21 @@ public partial class TrayViewModel : ObservableObject {
       return;
     }
     Process.Start(new ProcessStartInfo(_webUiUrl) { UseShellExecute = true });
+  }
+
+  [RelayCommand]
+  private void OpenSettings() {
+    if (_settingsWindow is not null) {
+      _settingsWindow.Activate();
+      return;
+    }
+
+    var endpoints = ProxyDiscovery.Resolve();
+    var vm = new SettingsWindowViewModel(_apiClient, endpoints.BaseUrl);
+    var window = new SettingsWindow { DataContext = vm };
+    window.Closed += (_, _) => _settingsWindow = null;
+    _settingsWindow = window;
+    window.Show();
   }
 
   [RelayCommand]

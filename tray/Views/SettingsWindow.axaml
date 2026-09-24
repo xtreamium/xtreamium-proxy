@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Xtreamium.Tray.Views.SettingsWindow"
+        Title="Xtreamium Proxy Settings"
+        Width="420"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+  <StackPanel Margin="16" Spacing="10">
+
+    <TextBlock Text="Web UI URL" FontWeight="SemiBold" />
+    <TextBlock Text="Everything else is configured from the web UI itself."
+               Foreground="Gray"
+               TextWrapping="Wrap"
+               FontSize="12" />
+    <TextBox Text="{Binding WebUiUrl}" PlaceholderText="https://streams.ferg.al" />
+
+    <TextBlock Text="{Binding ErrorMessage}"
+               Foreground="IndianRed"
+               TextWrapping="Wrap" />
+    <TextBlock Text="{Binding StatusMessage}"
+               Foreground="MediumSeaGreen" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Cancel" Command="{Binding CloseCommand}" />
+      <Button Content="Save" Command="{Binding SaveCommand}" IsDefault="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

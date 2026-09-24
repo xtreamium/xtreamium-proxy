@@ -9,7 +9,5 @@ public static class TrayPaths {
 
   public static string LogsDirectory => Path.Combine(AppDataDirectory, "logs");
 
-  public static string SettingsOverridePath => Path.Combine(AppDataDirectory, "settings.json");
-
   public static string AutostartMarkerPath => Path.Combine(AppDataDirectory, "autostart-installed");
 }

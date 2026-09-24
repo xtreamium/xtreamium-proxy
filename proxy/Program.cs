@@ -63,6 +63,13 @@ builder.Configuration
 // Set the log path for Serilog
 builder.Configuration["Serilog:WriteTo:1:Args:path"] = Path.Combine(AppPaths.LogsDirectory, "applog-.txt");
 
+// appsettings.Production.json / appsettings.Development.json are never loaded (see the
+// AddJsonFile call above — only the seeded user copy of the single base appsettings.json is), so
+// the environment-appropriate default has to be computed here rather than via file overlays.
+builder.Configuration["App:WebUiUrl"] ??= builder.Environment.IsDevelopment()
+  ? AppConfiguration.DefaultDevelopmentWebUiUrl
+  : AppConfiguration.DefaultProductionWebUiUrl;
+
 builder.Services.Configure<AppConfiguration>(builder.Configuration.GetSection(AppConfiguration.SectionName));
 builder.Services.Configure<CorsConfiguration>(builder.Configuration.GetSection(CorsConfiguration.SectionName));
 
