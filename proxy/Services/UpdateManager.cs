@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Xtreamium.Proxy.Configuration;
 
 #if WINDOWS
+using System.ComponentModel;
+using Microsoft.Win32;
 using Velopack;
 using Velopack.Sources;
 #endif
@@ -10,6 +13,10 @@ namespace Xtreamium.Proxy.Services;
 
 public class UpdateManager : IDisposable {
 #if WINDOWS
+  private const string AutostartName = "XtreamiumProxy";
+
+  private enum AutostartMode { Service, ScheduledTask, RunKey }
+
   private readonly ILogger<UpdateManager> _logger;
   private readonly Velopack.UpdateManager? _updateManager;
   private readonly string _updateUrl;
@@ -85,25 +92,26 @@ public class UpdateManager : IDisposable {
   public static void HandleVelopackEvents() {
     VelopackApp.Build()
         .OnFirstRun((v) => {
-          // First run after installation - configure Windows Service
           try {
-            // Remove any desktop shortcuts that might have been created
             RemoveDesktopShortcuts();
 
-            InstallWindowsService();
+            // A marker from a prior run of this same installed version (e.g. the hook was
+            // interrupted after choosing but before exiting) short-circuits the picker.
+            var mode = ReadPersistedMode() ?? PromptForAutostartMode();
+            InstallAutostart(mode);
+            PersistMode(mode);
 
-            // The tray icon is a separate, independent process from the service — launching it
-            // here (rather than having the service itself spawn a GUI process) is what gets it
+            // The tray icon is a separate, independent process from the proxy - launching it
+            // here (rather than having the proxy itself spawn a GUI process) is what gets it
             // showing immediately post-install without requiring a logout/login. It registers
             // its own autostart entry (HKCU Run key) on its own first launch, so nothing further
             // is needed here for it to persist across reboots.
             LaunchTrayIcon();
 
-            // Exit immediately after service installation
-            // Don't launch the GUI application
+            // Exit immediately after configuring autostart. Don't launch the GUI application.
             Environment.Exit(0);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to install service: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Failed to configure autostart: {ex.Message}");
             // Still exit to prevent GUI launch
             Environment.Exit(1);
           }
@@ -113,25 +121,136 @@ public class UpdateManager : IDisposable {
           RemoveDesktopShortcuts();
         })
         .OnAfterUpdateFastCallback((v) => {
-          // After update - restart the service instead of launching GUI
           try {
             RemoveDesktopShortcuts();
-            RestartWindowsService();
+
+            // No marker means an install from before this feature existed, which always tried
+            // to install a Service - defaulting to Service here preserves those installs.
+            var mode = ReadPersistedMode() ?? AutostartMode.Service;
+            switch (mode) {
+              case AutostartMode.Service:
+                RestartWindowsService();
+                break;
+              case AutostartMode.ScheduledTask:
+                // Re-run the install step (idempotent, /F-forced) rather than a bare relaunch -
+                // this re-captures the current exe path, which may have moved under Velopack's
+                // versioned install folders.
+                InstallScheduledTask();
+                break;
+              case AutostartMode.RunKey:
+                InstallRunKey();
+                break;
+            }
+
             Environment.Exit(0);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to restart service: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Failed to restart after update: {ex.Message}");
             Environment.Exit(1);
           }
         })
         .OnBeforeUninstallFastCallback((v) => {
-          // Uninstall Windows Service
           try {
-            UninstallWindowsService();
+            var mode = ReadPersistedMode() ?? AutostartMode.Service;
+            UninstallAutostart(mode);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to uninstall service: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Failed to uninstall autostart: {ex.Message}");
           }
         })
         .Run();
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static AutostartMode? ReadPersistedMode() {
+    if (!File.Exists(AppPaths.AutostartModePath)) {
+      return null;
+    }
+
+    return Enum.TryParse<AutostartMode>(File.ReadAllText(AppPaths.AutostartModePath).Trim(), out var mode)
+      ? mode
+      : null;
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void PersistMode(AutostartMode mode) {
+    Directory.CreateDirectory(AppPaths.AppDataDirectory);
+    File.WriteAllText(AppPaths.AutostartModePath, mode.ToString());
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void InstallAutostart(AutostartMode mode) {
+    switch (mode) {
+      case AutostartMode.Service:
+        InstallWindowsService();
+        break;
+      case AutostartMode.ScheduledTask:
+        InstallScheduledTask();
+        break;
+      case AutostartMode.RunKey:
+        InstallRunKey();
+        break;
+    }
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void UninstallAutostart(AutostartMode mode) {
+    switch (mode) {
+      case AutostartMode.Service:
+        UninstallWindowsService();
+        break;
+      case AutostartMode.ScheduledTask:
+        RunProcess(SchTasksPath, $"/Delete /TN \"{AutostartName}\" /F");
+        break;
+      case AutostartMode.RunKey:
+        using (var key = Registry.CurrentUser.OpenSubKey(
+                 @"Software\Microsoft\Windows\CurrentVersion\Run", writable: true)) {
+          key?.DeleteValue(AutostartName, throwOnMissingValue: false);
+        }
+        break;
+    }
+  }
+
+  /// <summary>Shows the tray's autostart picker window and waits for the user's choice. Never
+  /// throws - any failure (timeout, declined/closed picker, unreadable result) falls back to
+  /// RunKey, the cheapest and most-certain-to-succeed option, since this is already a degraded
+  /// path by the time it's hit.</summary>
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static AutostartMode PromptForAutostartMode() {
+    try {
+      var exeDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName);
+      if (string.IsNullOrEmpty(exeDir)) {
+        return AutostartMode.RunKey;
+      }
+
+      var trayExePath = Path.Combine(exeDir, "xtreamium-tray.exe");
+      if (!File.Exists(trayExePath)) {
+        return AutostartMode.RunKey;
+      }
+
+      var outputPath = Path.Combine(Path.GetTempPath(), $"xtreamium-autostart-choice-{Guid.NewGuid():N}.txt");
+
+      var startInfo = new System.Diagnostics.ProcessStartInfo {
+        FileName = trayExePath,
+        Arguments = $"--pick-autostart-mode \"{outputPath}\"",
+        UseShellExecute = true
+      };
+
+      using var process = System.Diagnostics.Process.Start(startInfo);
+      if (process is null || !process.WaitForExit(TimeSpan.FromMinutes(5))) {
+        return AutostartMode.RunKey;
+      }
+
+      if (File.Exists(outputPath)) {
+        var text = File.ReadAllText(outputPath).Trim();
+        File.Delete(outputPath);
+        if (Enum.TryParse<AutostartMode>(text, out var mode)) {
+          return mode;
+        }
+      }
+    } catch (Exception ex) {
+      System.Diagnostics.Debug.WriteLine($"Autostart picker failed: {ex.Message}");
+    }
+
+    return AutostartMode.RunKey;
   }
 
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -162,36 +281,75 @@ public class UpdateManager : IDisposable {
     }
   }
 
+  /// <summary>Installing/starting a service always requires admin rights, but OnFirstRun runs as
+  /// the installing standard user (the installer is deliberately non-admin) - so these two calls
+  /// need their own UAC elevation via Verb="runas". That requires UseShellExecute=true, which is
+  /// incompatible with output redirection, so unlike the (unelevated) calls below this can't
+  /// capture stdout/stderr.</summary>
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
   private static void InstallWindowsService() {
     var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
     if (string.IsNullOrEmpty(exePath))
       return;
 
-    var startInfo = new System.Diagnostics.ProcessStartInfo {
-      FileName = "sc.exe",
-      Arguments =
-$"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Service\" start= auto",
-      UseShellExecute = false,
-      CreateNoWindow = true,
-      RedirectStandardOutput = true,
-      RedirectStandardError = true
-    };
+    try {
+      var createExitCode = RunElevated(ScPath,
+        $"create {AutostartName} binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Service\" start= auto");
 
-    using var process = System.Diagnostics.Process.Start(startInfo);
-    process?.WaitForExit();
-
-    if (process?.ExitCode == 0) {
-      // Start the service
-      var startServiceInfo = new System.Diagnostics.ProcessStartInfo {
-        FileName = "sc.exe",
-        Arguments = "start XtreamiumProxy",
-        UseShellExecute = false,
-        CreateNoWindow = true
-      };
-      using var startProcess = System.Diagnostics.Process.Start(startServiceInfo);
-      startProcess?.WaitForExit();
+      if (createExitCode == 0) {
+        RunElevated(ScPath, $"start {AutostartName}");
+      }
+    } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
+      // ERROR_CANCELLED - the user declined the UAC prompt.
+      System.Diagnostics.Debug.WriteLine("Service install cancelled: UAC prompt declined.");
     }
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void InstallScheduledTask() {
+    var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+    if (string.IsNullOrEmpty(exePath)) {
+      return;
+    }
+
+    // No shell is in the loop here, so %USERNAME% would never expand - build the literal value.
+    // /RU + /IT ("run only when logged on") is what avoids ever storing/prompting for a password.
+    var currentUser = $"{Environment.UserDomainName}\\{Environment.UserName}";
+    RunProcess(SchTasksPath,
+      $"/Create /TN \"{AutostartName}\" /TR \"\\\"{exePath}\\\"\" /SC ONLOGON /RL LIMITED /RU \"{currentUser}\" /IT /F");
+    RunProcess(SchTasksPath, $"/Run /TN \"{AutostartName}\"");
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void InstallRunKey() {
+    var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+    if (string.IsNullOrEmpty(exePath)) {
+      return;
+    }
+
+    using (var key = Registry.CurrentUser.OpenSubKey(
+             @"Software\Microsoft\Windows\CurrentVersion\Run", writable: true)) {
+      key?.SetValue(AutostartName, $"\"{exePath}\"", RegistryValueKind.String);
+    }
+
+    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
+      FileName = exePath,
+      UseShellExecute = true
+    });
+  }
+
+  private static string ScPath => Path.Combine(Environment.SystemDirectory, "sc.exe");
+  private static string SchTasksPath => Path.Combine(Environment.SystemDirectory, "schtasks.exe");
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void RunProcess(string fileName, string arguments) {
+    using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
+      FileName = fileName,
+      Arguments = arguments,
+      UseShellExecute = false,
+      CreateNoWindow = true
+    });
+    process?.WaitForExit();
   }
 
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -216,54 +374,44 @@ $"create XtreamiumProxy binPath= \"{exePath}\" DisplayName= \"Xtreamium Proxy Se
     }
   }
 
+  /// <summary>Runs inside the proxy process itself, which in Service mode IS the service - i.e.
+  /// this executes as LocalSystem in session 0. LocalSystem already has full SCM rights (no
+  /// elevation needed or possible - session 0 has no window station to render a UAC prompt on
+  /// anyway), so unlike Install/UninstallWindowsService this stays unelevated.</summary>
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
   private static void RestartWindowsService() {
-    // Stop the service
-    var stopInfo = new System.Diagnostics.ProcessStartInfo {
-      FileName = "sc.exe",
-      Arguments = "stop XtreamiumProxy",
-      UseShellExecute = false,
-      CreateNoWindow = true
-    };
-    using var stopProcess = System.Diagnostics.Process.Start(stopInfo);
-    stopProcess?.WaitForExit();
-
+    RunProcess(ScPath, $"stop {AutostartName}");
     System.Threading.Thread.Sleep(2000); // Wait for service to stop
-
-    // Start the service
-    var startInfo = new System.Diagnostics.ProcessStartInfo {
-      FileName = "sc.exe",
-      Arguments = "start XtreamiumProxy",
-      UseShellExecute = false,
-      CreateNoWindow = true
-    };
-    using var startProcess = System.Diagnostics.Process.Start(startInfo);
-    startProcess?.WaitForExit();
+    RunProcess(ScPath, $"start {AutostartName}");
   }
 
+  /// <summary>Runs from OnBeforeUninstallFastCallback as the interactive standard user (uninstall
+  /// isn't elevated any more than install is), so - like InstallWindowsService - these need their
+  /// own UAC elevation.</summary>
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
   private static void UninstallWindowsService() {
-    // Stop the service first
-    var stopInfo = new System.Diagnostics.ProcessStartInfo {
-      FileName = "sc.exe",
-      Arguments = "stop XtreamiumProxy",
-      UseShellExecute = false,
-      CreateNoWindow = true
-    };
-    using var stopProcess = System.Diagnostics.Process.Start(stopInfo);
-    stopProcess?.WaitForExit();
+    try {
+      RunElevated(ScPath, $"stop {AutostartName}");
+      System.Threading.Thread.Sleep(2000); // Wait for service to stop
+      RunElevated(ScPath, $"delete {AutostartName}");
+    } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
+      System.Diagnostics.Debug.WriteLine("Service uninstall cancelled: UAC prompt declined.");
+    }
+  }
 
-    System.Threading.Thread.Sleep(2000); // Wait for service to stop
-
-    // Delete the service
-    var deleteInfo = new System.Diagnostics.ProcessStartInfo {
-      FileName = "sc.exe",
-      Arguments = "delete XtreamiumProxy",
-      UseShellExecute = false,
-      CreateNoWindow = true
-    };
-    using var deleteProcess = System.Diagnostics.Process.Start(deleteInfo);
-    deleteProcess?.WaitForExit();
+  /// <summary>Runs a command elevated via a UAC prompt. Throws Win32Exception (NativeErrorCode
+  /// 1223 / ERROR_CANCELLED) if the prompt is declined - callers must catch that.</summary>
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static int? RunElevated(string fileName, string arguments) {
+    using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
+      FileName = fileName,
+      Arguments = arguments,
+      UseShellExecute = true,
+      Verb = "runas",
+      WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+    });
+    process?.WaitForExit();
+    return process?.ExitCode;
   }
 
   public void Dispose() {

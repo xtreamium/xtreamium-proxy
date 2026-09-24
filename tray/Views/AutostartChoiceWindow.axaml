@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Xtreamium.Tray.Views.AutostartChoiceWindow"
+        Title="Xtreamium Proxy Setup"
+        Width="440"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+  <StackPanel Margin="20" Spacing="12">
+
+    <TextBlock Text="How should Xtreamium Proxy start?" FontWeight="SemiBold" FontSize="15" />
+    <TextBlock Text="Pick one - this can't be changed later without reinstalling."
+               Foreground="Gray"
+               TextWrapping="Wrap"
+               FontSize="12" />
+
+    <Button Command="{Binding ChooseScheduledTaskCommand}" HorizontalContentAlignment="Stretch" Padding="12">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Scheduled Task (recommended)" FontWeight="SemiBold" />
+        <TextBlock Text="Starts automatically when you log in. No admin rights needed."
+                   TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
+      </StackPanel>
+    </Button>
+
+    <Button Command="{Binding ChooseRunKeyCommand}" HorizontalContentAlignment="Stretch" Padding="12">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Startup entry" FontWeight="SemiBold" />
+        <TextBlock Text="Simplest option. Starts when you log in. No admin rights needed."
+                   TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
+      </StackPanel>
+    </Button>
+
+    <Button Command="{Binding ChooseServiceCommand}" HorizontalContentAlignment="Stretch" Padding="12">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Windows Service" FontWeight="SemiBold" />
+        <TextBlock Text="Starts at boot and keeps running even when logged out. Needs a one-time admin permission prompt."
+                   TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
+      </StackPanel>
+    </Button>
+
+  </StackPanel>
+</Window>

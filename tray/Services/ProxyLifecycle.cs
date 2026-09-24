@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.ServiceProcess;
 
@@ -84,10 +85,23 @@ public sealed class ProxyLifecycleMonitor(
 
 [SupportedOSPlatform("windows")]
 public static class ProxyServiceProbe {
-  // Must match the name UpdateManager's InstallWindowsService registers with sc.exe.
+  // Must match the name UpdateManager registers with sc.exe / schtasks.exe / the registry Run key.
   public const string ServiceName = "XtreamiumProxy";
 
+  // The name Process.GetProcessesByName expects - no ".exe", since Process.ProcessName strips it.
+  private const string ProcessName = "xtreamium-proxy";
+
+  /// <summary>Branches on which autostart mode the user picked at first run (see
+  /// ProxyDiscovery.ReadProxyAutostartMode) - ScheduledTask/RunKey aren't Windows Services, so
+  /// ServiceController can't see them and a running-process check is used instead. Anything else
+  /// (including no marker at all, e.g. an install from before this feature existed) assumes
+  /// Service, matching UpdateManager's own default for those installs.</summary>
   public static ProxyServiceState Query() {
+    var mode = ProxyDiscovery.ReadProxyAutostartMode();
+    return mode is "ScheduledTask" or "RunKey" ? QueryByProcess() : QueryByService();
+  }
+
+  private static ProxyServiceState QueryByService() {
     try {
       using var service = new ServiceController(ServiceName);
       return service.Status is ServiceControllerStatus.Stopped or ServiceControllerStatus.StopPending
@@ -98,4 +112,9 @@ public static class ProxyServiceProbe {
       return ProxyServiceState.Unknown;
     }
   }
+
+  private static ProxyServiceState QueryByProcess() =>
+    Process.GetProcessesByName(ProcessName).Length > 0
+      ? ProxyServiceState.Running
+      : ProxyServiceState.Stopped;
 }
