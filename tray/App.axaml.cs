@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using Xtreamium.Tray.Services;
 using Xtreamium.Tray.ViewModels;
 using Xtreamium.Tray.Views;
 
@@ -24,8 +23,8 @@ public class App : Application {
       } else {
         // No main window is ever created in normal tray-icon mode — the tray icon is the entire UI.
         desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        IgnoreTrayIconShutdownCancellation();
         DataContext = new TrayViewModel(desktop);
-        FollowProxyLifecycle(desktop);
       }
     }
 
@@ -54,20 +53,17 @@ public class App : Application {
     window.Show();
   }
 
-  // Linux needs nothing here — the packaged systemd unit is bound to xtreamium-proxy.service, so
-  // systemd stops the tray whenever it stops the proxy. Windows has no equivalent for a per-user
-  // GUI process, so the tray watches the service and shuts itself down when it goes away.
-  private static void FollowProxyLifecycle(IClassicDesktopStyleApplicationLifetime desktop) {
-    if (!OperatingSystem.IsWindows()) {
-      return;
-    }
-
-    var monitor = new ProxyLifecycleMonitor(
-      ProxyServiceProbe.Query,
-      () => Dispatcher.UIThread.Post(() => desktop.Shutdown()),
-      ProxyLifecycleMonitor.DefaultPollInterval,
-      ProxyLifecycleMonitor.DefaultStopGrace);
-    desktop.Exit += (_, _) => monitor.Dispose();
-    monitor.Start();
+  // On Linux, Avalonia's D-Bus tray icon cancels its own watcher when it's disposed at shutdown,
+  // and that TaskCanceledException surfaces on the dispatcher as unhandled. Left alone it aborts
+  // the process (SIGABRT), which systemd's Restart=on-failure treats as a crash - so quitting from
+  // the tray menu just brought the tray straight back. Only that one exception is swallowed; any
+  // other unhandled exception still crashes (and restarts) as before.
+  private static void IgnoreTrayIconShutdownCancellation() {
+    Dispatcher.UIThread.UnhandledException += (_, e) => {
+      if (e.Exception is OperationCanceledException &&
+          e.Exception.StackTrace?.Contains("DBusTrayIconImpl") == true) {
+        e.Handled = true;
+      }
+    };
   }
 }

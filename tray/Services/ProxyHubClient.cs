@@ -26,6 +26,7 @@ public class ProxyHubClient : IAsyncDisposable {
 
   private CancellationTokenSource? _loopCts;
   private Task? _loopTask;
+  private TaskCompletionSource _retryNow = NewRetrySignal();
 
   public event Action<RecordingChangedEventDto>? RecordingChanged;
   public event Action<RecordingProgressEventDto>? RecordingProgress;
@@ -34,6 +35,14 @@ public class ProxyHubClient : IAsyncDisposable {
   /// <summary>Raised after every fresh connect and every reconnect. The caller should re-fetch
   /// GET /recordings here, since events may have been missed while disconnected.</summary>
   public event Func<Task>? Reconciling;
+
+  /// <summary>Cuts short the current backoff wait and restarts the schedule from the beginning -
+  /// used right after the tray starts the proxy itself, so the icon doesn't sit on "disconnected"
+  /// for up to the longest backoff step once it's actually up.</summary>
+  public void RetryNow() => _retryNow.TrySetResult();
+
+  private static TaskCompletionSource NewRetrySignal() =>
+    new(TaskCreationOptions.RunContinuationsAsynchronously);
 
   public void Start() {
     _loopCts = new CancellationTokenSource();
@@ -82,8 +91,13 @@ public class ProxyHubClient : IAsyncDisposable {
       var delay = BackoffSchedule[Math.Min(attempt, BackoffSchedule.Length - 1)];
       attempt++;
       if (delay > TimeSpan.Zero) {
+        var retryNow = _retryNow = NewRetrySignal();
         try {
-          await Task.Delay(delay, ct);
+          var woken = await Task.WhenAny(Task.Delay(delay, ct), retryNow.Task);
+          await woken; // surfaces cancellation of the delay
+          if (woken == retryNow.Task) {
+            attempt = 0;
+          }
         } catch (OperationCanceledException) {
           break;
         }

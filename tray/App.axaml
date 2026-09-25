@@ -17,6 +17,13 @@
             <NativeMenuItem Header="Set web UI URL…"
                             Command="{Binding OpenSettingsCommand}" />
             <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Start service"
+                            Command="{Binding StartProxyCommand}"
+                            IsEnabled="{Binding CanStartProxy}" />
+            <NativeMenuItem Header="Stop service"
+                            Command="{Binding StopProxyCommand}"
+                            IsEnabled="{Binding CanStopProxy}" />
+            <NativeMenuItemSeparator />
             <NativeMenuItem Header="Quit"
                             Command="{Binding QuitCommand}" />
           </NativeMenu>

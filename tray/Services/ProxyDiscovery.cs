@@ -22,8 +22,8 @@ public static class ProxyDiscovery {
     "xtreamium-proxy", "appsettings.json");
 
   // Written by the proxy's Velopack OnFirstRun hook (UpdateManager.PersistMode) once the user
-  // picks a startup mode - see ProxyServiceProbe, which reads this to decide how to check whether
-  // the proxy is alive. Same cross-directory-read trick as ProxyAppSettingsPath above.
+  // picks a startup mode - see ProxyServiceControl, which reads this to decide how to start and
+  // stop the proxy. Same cross-directory-read trick as ProxyAppSettingsPath above.
   private static string ProxyAutostartModePath => Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
     "xtreamium-proxy", "autostart-mode.txt");

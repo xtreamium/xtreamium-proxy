@@ -86,16 +86,15 @@ jobs:
         WantedBy=default.target
         EOF
 
-        # Tray icon user unit — shipped at /usr/lib/systemd/user/xtreamium-tray.service. It is bound
-        # to the proxy's lifecycle: the proxy Wants= it (so starting the proxy starts the tray),
-        # PartOf= means stopping/restarting the proxy stops/restarts it, and Requisite= stops it
-        # being started on its own while the proxy is down.
+        # Tray icon user unit — shipped at /usr/lib/systemd/user/xtreamium-tray.service. The proxy
+        # Wants= it (so starting the proxy starts the tray), but the tray is deliberately NOT PartOf=
+        # or Requisite= on the proxy: it stays up while the proxy is stopped so its menu can start
+        # the proxy again.
         cat > ./publish/linux/xtreamium-tray.service << 'EOF'
         [Unit]
         Description=Xtreamium Tray
         Documentation=https://github.com/xtreamium/xtreamium-proxy
-        PartOf=xtreamium-proxy.service graphical-session.target
-        Requisite=xtreamium-proxy.service
+        PartOf=graphical-session.target
         After=xtreamium-proxy.service graphical-session.target
         # The proxy can start before the desktop session has exported its display to the user
         # manager. Skip cleanly (rather than crash-loop) when there is no display; the

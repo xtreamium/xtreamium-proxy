@@ -57,7 +57,7 @@ contents:
       mode: 0644
 
   # Starts the tray when the desktop session comes up *after* the proxy already started (the
-  # usual order at login). The unit's Requisite= keeps this from starting it if the proxy is down.
+  # usual order at login). It also starts if the proxy is down, so its menu can start the proxy.
   - src: "../xtreamium-tray.service"
     dst: "/usr/lib/systemd/user/graphical-session.target.wants/xtreamium-tray.service"
     type: symlink

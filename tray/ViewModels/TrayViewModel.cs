@@ -30,10 +30,24 @@ public partial class TrayViewModel : ObservableObject {
   private CancellationTokenSource? _disconnectPromotionCts;
   private DateTime _lastProgressTooltipUpdate = DateTime.MinValue;
   private Window? _settingsWindow;
+  private bool _stoppedFromTray;
 
   [ObservableProperty] private WindowIcon _iconSource;
   [ObservableProperty] private string _tooltipText = "Xtreamium — starting…";
   [ObservableProperty] private bool _isWebUiEnabled;
+
+  // null until the first connect attempt settles, so neither Start nor Stop is offered while the
+  // tray doesn't yet know which one applies.
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(CanStartProxy), nameof(CanStopProxy))]
+  private bool? _isProxyRunning;
+
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(CanStartProxy), nameof(CanStopProxy))]
+  private bool _isServiceActionInFlight;
+
+  public bool CanStartProxy => ProxyServiceControl.IsSupported && !IsServiceActionInFlight && IsProxyRunning == false;
+  public bool CanStopProxy => ProxyServiceControl.IsSupported && !IsServiceActionInFlight && IsProxyRunning == true;
 
   public TrayViewModel(IClassicDesktopStyleApplicationLifetime desktop) {
     _desktop = desktop;
@@ -85,7 +99,11 @@ public partial class TrayViewModel : ObservableObject {
     if (phase == HubConnectionPhase.Connected) {
       _isConfirmedConnected = true;
       CancelDisconnectPromotion();
-      Dispatcher.UIThread.Post(RecomputeIcon);
+      Dispatcher.UIThread.Post(() => {
+        _stoppedFromTray = false;
+        IsProxyRunning = true;
+        RecomputeIcon();
+      });
       return;
     }
 
@@ -112,7 +130,8 @@ public partial class TrayViewModel : ObservableObject {
     if (!_isConfirmedConnected) {
       Dispatcher.UIThread.Post(() => {
         IconSource = _disconnectedIcon;
-        TooltipText = "Xtreamium — can't reach proxy";
+        TooltipText = _stoppedFromTray ? "Xtreamium Proxy - stopped" : "Xtreamium — can't reach proxy";
+        IsProxyRunning = false;
       });
     }
   }
@@ -171,6 +190,31 @@ public partial class TrayViewModel : ObservableObject {
     window.Closed += (_, _) => _settingsWindow = null;
     _settingsWindow = window;
     window.Show();
+  }
+
+  [RelayCommand]
+  private async Task StartProxyAsync() {
+    IsServiceActionInFlight = true;
+    try {
+      if (await ProxyServiceControl.StartAsync()) {
+        _hubClient.RetryNow();
+      }
+    } finally {
+      IsServiceActionInFlight = false;
+    }
+  }
+
+  [RelayCommand]
+  private async Task StopProxyAsync() {
+    IsServiceActionInFlight = true;
+    try {
+      // Set before the stop lands so the disconnected tooltip (5s later) reads as intentional.
+      // Cleared again if the stop didn't happen (e.g. UAC declined) or on the next connect.
+      _stoppedFromTray = true;
+      _stoppedFromTray = await ProxyServiceControl.StopAsync();
+    } finally {
+      IsServiceActionInFlight = false;
+    }
   }
 
   [RelayCommand]
