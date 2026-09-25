@@ -25,6 +25,7 @@ public partial class TrayViewModel : ObservableObject {
   private readonly WindowIcon _disconnectedIcon;
 
   private string? _webUiUrl;
+  private string _listenAddress = $"{LocalAddress.Resolve()}:{ProxyDiscovery.Resolve().Port}";
   private bool _isConfirmedConnected;
   private CancellationTokenSource? _disconnectPromotionCts;
   private DateTime _lastProgressTooltipUpdate = DateTime.MinValue;
@@ -60,6 +61,11 @@ public partial class TrayViewModel : ObservableObject {
   private async Task ReconcileAsync() {
     try {
       var endpoints = ProxyDiscovery.Resolve();
+      // Re-resolved on every reconnect so a proxy restart on a new port, or a changed LAN
+      // address, shows up in the tooltip.
+      var listenAddress = $"{LocalAddress.Resolve()}:{endpoints.Port}";
+      Dispatcher.UIThread.Post(() => _listenAddress = listenAddress);
+
       var active = await _apiClient.GetActiveRecordingsAsync(endpoints.BaseUrl, CancellationToken.None);
       _tracker.Reset(active);
 
@@ -141,7 +147,7 @@ public partial class TrayViewModel : ObservableObject {
   private void RecomputeIcon() {
     var active = _tracker.ActiveRecordings;
     IconSource = active.Count == 0 ? _idleIcon : _recordingIcon;
-    TooltipText = TooltipFormatter.Format(active);
+    TooltipText = TooltipFormatter.Format(_listenAddress, active);
   }
 
   [RelayCommand]

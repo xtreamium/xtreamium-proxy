@@ -111,7 +111,7 @@ public class UpdateManager : IDisposable {
             // Exit immediately after configuring autostart. Don't launch the GUI application.
             Environment.Exit(0);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to configure autostart: {ex.Message}");
+            LogDiagnostic($"Failed to configure autostart: {ex}");
             // Still exit to prevent GUI launch
             Environment.Exit(1);
           }
@@ -132,19 +132,21 @@ public class UpdateManager : IDisposable {
                 RestartWindowsService();
                 break;
               case AutostartMode.ScheduledTask:
-                // Re-run the install step (idempotent, /F-forced) rather than a bare relaunch -
-                // this re-captures the current exe path, which may have moved under Velopack's
-                // versioned install folders.
-                InstallScheduledTask();
-                break;
               case AutostartMode.RunKey:
-                InstallRunKey();
+                // Neither is a Windows Service, so there's nothing to bounce via the SCM - the
+                // scheduled task / Run key registration already points at Velopack's stable
+                // "current" path (confirmed: it doesn't change across versions), so a plain
+                // relaunch is all that's needed. This also avoids a UAC prompt on every update -
+                // re-running the (now-elevated) Scheduled Task registration here would ask for
+                // admin on every single auto-update, which defeats the point of it being a
+                // lighter-weight option than Service.
+                RelaunchProxy();
                 break;
             }
 
             Environment.Exit(0);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to restart after update: {ex.Message}");
+            LogDiagnostic($"Failed to restart after update: {ex}");
             Environment.Exit(1);
           }
         })
@@ -153,7 +155,7 @@ public class UpdateManager : IDisposable {
             var mode = ReadPersistedMode() ?? AutostartMode.Service;
             UninstallAutostart(mode);
           } catch (Exception ex) {
-            System.Diagnostics.Debug.WriteLine($"Failed to uninstall autostart: {ex.Message}");
+            LogDiagnostic($"Failed to uninstall autostart: {ex}");
           }
         })
         .Run();
@@ -198,7 +200,11 @@ public class UpdateManager : IDisposable {
         UninstallWindowsService();
         break;
       case AutostartMode.ScheduledTask:
-        RunProcess(SchTasksPath, $"/Delete /TN \"{AutostartName}\" /F");
+        try {
+          RunElevated(SchTasksPath, $"/Delete /TN \"{AutostartName}\" /F");
+        } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
+          LogDiagnostic("Scheduled task deletion cancelled: UAC prompt declined.");
+        }
         break;
       case AutostartMode.RunKey:
         using (var key = Registry.CurrentUser.OpenSubKey(
@@ -247,7 +253,7 @@ public class UpdateManager : IDisposable {
         }
       }
     } catch (Exception ex) {
-      System.Diagnostics.Debug.WriteLine($"Autostart picker failed: {ex.Message}");
+      LogDiagnostic($"Autostart picker failed: {ex}");
     }
 
     return AutostartMode.RunKey;
@@ -301,7 +307,7 @@ public class UpdateManager : IDisposable {
       }
     } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
       // ERROR_CANCELLED - the user declined the UAC prompt.
-      System.Diagnostics.Debug.WriteLine("Service install cancelled: UAC prompt declined.");
+      LogDiagnostic("Service install cancelled: UAC prompt declined.");
     }
   }
 
@@ -312,12 +318,19 @@ public class UpdateManager : IDisposable {
       return;
     }
 
-    // No shell is in the loop here, so %USERNAME% would never expand - build the literal value.
-    // /RU + /IT ("run only when logged on") is what avoids ever storing/prompting for a password.
-    var currentUser = $"{Environment.UserDomainName}\\{Environment.UserName}";
-    RunProcess(SchTasksPath,
-      $"/Create /TN \"{AutostartName}\" /TR \"\\\"{exePath}\\\"\" /SC ONLOGON /RL LIMITED /RU \"{currentUser}\" /IT /F");
-    RunProcess(SchTasksPath, $"/Run /TN \"{AutostartName}\"");
+    // Confirmed on a real machine: schtasks /Create requires an elevated token to register any
+    // new task at all, regardless of /RU - a plain unelevated call fails "Access is denied" even
+    // naming the calling user via /RU. So this needs the same runas treatment as the Service path,
+    // despite being scoped to the current user's own session rather than running as SYSTEM.
+    LogDiagnostic($"Creating scheduled task for '{exePath}'.");
+    try {
+      RunElevated(SchTasksPath,
+        $"/Create /TN \"{AutostartName}\" /TR \"\\\"{exePath}\\\"\" /SC ONLOGON /RL LIMITED /F");
+      RunElevated(SchTasksPath, $"/Run /TN \"{AutostartName}\"");
+    } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
+      // ERROR_CANCELLED - the user declined the UAC prompt.
+      LogDiagnostic("Scheduled task creation cancelled: UAC prompt declined.");
+    }
   }
 
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -332,6 +345,20 @@ public class UpdateManager : IDisposable {
       key?.SetValue(AutostartName, $"\"{exePath}\"", RegistryValueKind.String);
     }
 
+    RelaunchProxy();
+  }
+
+  /// <summary>Starts the current build of the proxy exe, unelevated. Used both right after
+  /// installing the Run key (no service/task to start it for us) and after an auto-update in
+  /// ScheduledTask/RunKey mode (neither is a Windows Service, so there's nothing for the SCM to
+  /// restart).</summary>
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void RelaunchProxy() {
+    var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+    if (string.IsNullOrEmpty(exePath)) {
+      return;
+    }
+
     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
       FileName = exePath,
       UseShellExecute = true
@@ -341,15 +368,47 @@ public class UpdateManager : IDisposable {
   private static string ScPath => Path.Combine(Environment.SystemDirectory, "sc.exe");
   private static string SchTasksPath => Path.Combine(Environment.SystemDirectory, "schtasks.exe");
 
+  /// <summary>Runs a command and logs its exit code + output when it fails. This whole hook runs
+  /// before Serilog is configured (Program.cs builds the host after HandleVelopackEvents), so
+  /// failures here would otherwise be completely invisible - LogDiagnostic writes a plain-text
+  /// fallback log instead.</summary>
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
   private static void RunProcess(string fileName, string arguments) {
     using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
       FileName = fileName,
       Arguments = arguments,
       UseShellExecute = false,
-      CreateNoWindow = true
+      CreateNoWindow = true,
+      RedirectStandardOutput = true,
+      RedirectStandardError = true
     });
-    process?.WaitForExit();
+
+    if (process is null) {
+      LogDiagnostic($"Failed to start: {fileName} {arguments}");
+      return;
+    }
+
+    var stdout = process.StandardOutput.ReadToEnd();
+    var stderr = process.StandardError.ReadToEnd();
+    process.WaitForExit();
+
+    if (process.ExitCode != 0) {
+      LogDiagnostic(
+        $"'{fileName} {arguments}' exited {process.ExitCode}. stdout: {stdout.Trim()} stderr: {stderr.Trim()}");
+    }
+  }
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static void LogDiagnostic(string message) {
+    System.Diagnostics.Debug.WriteLine(message);
+    try {
+      Directory.CreateDirectory(AppPaths.LogsDirectory);
+      File.AppendAllText(
+        Path.Combine(AppPaths.LogsDirectory, "autostart-setup.log"),
+        $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
+    } catch {
+      // Best-effort diagnostics only - this must never be why autostart setup fails.
+    }
   }
 
   [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -395,7 +454,7 @@ public class UpdateManager : IDisposable {
       System.Threading.Thread.Sleep(2000); // Wait for service to stop
       RunElevated(ScPath, $"delete {AutostartName}");
     } catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) {
-      System.Diagnostics.Debug.WriteLine("Service uninstall cancelled: UAC prompt declined.");
+      LogDiagnostic("Service uninstall cancelled: UAC prompt declined.");
     }
   }
 
@@ -411,6 +470,13 @@ public class UpdateManager : IDisposable {
       WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
     });
     process?.WaitForExit();
+
+    // UseShellExecute=true means stdout/stderr can't be captured here (unlike RunProcess) - the
+    // exit code is all there is to go on.
+    if (process?.ExitCode is int code and not 0) {
+      LogDiagnostic($"'{fileName} {arguments}' (elevated) exited {code}.");
+    }
+
     return process?.ExitCode;
   }
 

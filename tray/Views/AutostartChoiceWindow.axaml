@@ -16,16 +16,8 @@
 
     <Button Command="{Binding ChooseScheduledTaskCommand}" HorizontalContentAlignment="Stretch" Padding="12">
       <StackPanel Spacing="2">
-        <TextBlock Text="Scheduled Task (recommended)" FontWeight="SemiBold" />
-        <TextBlock Text="Starts automatically when you log in. No admin rights needed."
-                   TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
-      </StackPanel>
-    </Button>
-
-    <Button Command="{Binding ChooseRunKeyCommand}" HorizontalContentAlignment="Stretch" Padding="12">
-      <StackPanel Spacing="2">
-        <TextBlock Text="Startup entry" FontWeight="SemiBold" />
-        <TextBlock Text="Simplest option. Starts when you log in. No admin rights needed."
+        <TextBlock Text="Scheduled Task (per-user)" FontWeight="SemiBold" />
+        <TextBlock Text="Runs in your own session, not as a system account. Needs a one-time admin permission prompt."
                    TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
       </StackPanel>
     </Button>
@@ -34,6 +26,14 @@
       <StackPanel Spacing="2">
         <TextBlock Text="Windows Service" FontWeight="SemiBold" />
         <TextBlock Text="Starts at boot and keeps running even when logged out. Needs a one-time admin permission prompt."
+                   TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
+      </StackPanel>
+    </Button>
+
+    <Button Command="{Binding ChooseRunKeyCommand}" HorizontalContentAlignment="Stretch" Padding="12">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Startup entry" FontWeight="SemiBold" />
+        <TextBlock Text="Simplest option. Starts when you log in. No admin rights needed."
                    TextWrapping="Wrap" Foreground="Gray" FontSize="12" />
       </StackPanel>
     </Button>
